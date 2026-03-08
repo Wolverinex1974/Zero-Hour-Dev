@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: PARADOXAL TELNET - v21.2
+# ZERO HOUR CORE: PARADOXAL TELNET - v23.0
 # =========================================================
 # ROLE: Sovereign Socket Wrapper (Persistent & Robust)
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

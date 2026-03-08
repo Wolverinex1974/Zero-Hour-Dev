@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: VALIDATOR ENGINE - v21.2
+# ZERO HOUR CORE: VALIDATOR ENGINE - v23.0
 # =========================================================
 # ROLE: Sovereign Sentry & Live-Sync Guard
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

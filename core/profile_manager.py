@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: PROFILE MANAGER - v21.2
+# ZERO HOUR CORE: PROFILE MANAGER - v23.0
 # =========================================================
 # ROLE: JSON Profile Storage & Retrieval
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

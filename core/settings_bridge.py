@@ -1,232 +1,283 @@
-# =========================================================
-# ZERO HOUR CORE: SETTINGS BRIDGE - v21.2
-# =========================================================
-# ROLE: Translator between UI Widgets, Registry, and XML
+# ==============================================================================
+# ZERO HOUR CORE: SETTINGS BRIDGE - v23.0
+# ==============================================================================
+# ROLE: The Translator. Bridges the GUI Widgets to the serverconfig.xml file.
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand
-# =========================================================
-# PHASE 16.5 UPDATE:
-# FIX: 100% Bracket-Free payload to defeat parser corruption.
-# SURGERY: Added RAT Parity mappings for WorldGenName, 
-#          TwitchServerPermission, and DynamicMeshEnabled.
-# FEATURE: ARKASM UI Redesign integration. Purged HTML Tooltips.
-#          XML comments are now injected as static text into 
-#          the new 3rd-column UI labels for instant readability.
-# =========================================================
+# ==============================================================================
+# PHASE 23 UPDATE (INTELLIGENCE RESTORATION):
+# FIX: Added 'Comment Scraper' logic to read <!-- Help Text --> from XML.
+# FIX: Injects scraped descriptions into the UI Help Labels (3rd Column).
+# FIX: Maintains robust ElementTree parsing for data values.
+# ==============================================================================
 
 import os
-import logging
-from PySide6.QtWidgets import QLineEdit, QComboBox, QCheckBox, QSpinBox, QTimeEdit
-from PySide6.QtCore import QTime
-
-from core.app_state import state
-from core.registry import RegistryEngine
-from core.xml_parser import XMLConfigParser
-
-# Initialize standard Paradoxal Logger
-log = logging.getLogger("Paradoxal")
+import sys
+import shutil
+import re
+import xml.etree.ElementTree as ET
+from PySide6.QtWidgets import (
+    QLineEdit, 
+    QComboBox, 
+    QCheckBox, 
+    QSpinBox, 
+    QMessageBox,
+    QLabel
+)
 
 class SettingsBridge:
-    """
-    The Diplomat.
-    It reads the UI state, updates the Registry, and commits to XML.
-    It also pulls data from XML to hydrate the UI.
-    """
-    def __init__(self, ui_reference):
-        self.ui = ui_reference
-        self.xml_parser = None
-        
-        # MAPPING: UI Widget Name -> ServerConfig Property Name
-        # This dictionary links the visual input to the actual data key.
-        self.ui_map = dict()
-        self.ui_map.update({"txt_ServerName": "ServerName"})
-        self.ui_map.update({"txt_ServerDescription": "ServerDescription"})
-        self.ui_map.update({"txt_ServerWebsiteURL": "ServerWebsiteURL"})
-        self.ui_map.update({"txt_ServerPassword": "ServerPassword"})
-        self.ui_map.update({"combo_WebDashboardEnabled": "WebDashboardEnabled"})
-        
-        self.ui_map.update({"txt_ServerPort": "ServerPort"})
-        self.ui_map.update({"txt_ServerMaxPlayerCount": "ServerMaxPlayerCount"})
-        self.ui_map.update({"txt_ServerVisibility": "ServerVisibility"})
-        
-        self.ui_map.update({"combo_TelnetEnabled": "TelnetEnabled"})
-        self.ui_map.update({"txt_TelnetPort": "TelnetPort"})
-        self.ui_map.update({"txt_TelnetPassword": "TelnetPassword"})
-        self.ui_map.update({"txt_AdminID": "AdminFileName"}) 
-        
-        self.ui_map.update({"combo_GameWorld": "GameWorld"})
-        self.ui_map.update({"combo_WorldGenName": "WorldGenName"})
-        self.ui_map.update({"txt_WorldGenSeed": "WorldGenSeed"})
-        self.ui_map.update({"txt_WorldGenSize": "WorldGenSize"})
-        
-        self.ui_map.update({"combo_GameDifficulty": "GameDifficulty"})
-        self.ui_map.update({"txt_XPMultiplier": "XPMultiplier"})
-        self.ui_map.update({"txt_BlockDamagePlayer": "BlockDamagePlayer"})
-        
-        self.ui_map.update({"txt_DayNightLength": "DayNightLength"})
-        self.ui_map.update({"txt_DayLightLength": "DayLightLength"})
-        self.ui_map.update({"combo_DropOnDeath": "DropOnDeath"})
-        
-        self.ui_map.update({"txt_MaxSpawnedZombies": "MaxSpawnedZombies"})
-        self.ui_map.update({"txt_BloodMoonFrequency": "BloodMoonFrequency"})
-        self.ui_map.update({"txt_BloodMoonEnemyCount": "BloodMoonEnemyCount"})
-        
-        self.ui_map.update({"txt_LootAbundance": "LootAbundance"})
-        self.ui_map.update({"txt_LootRespawnDays": "LootRespawnDays"})
-        self.ui_map.update({"txt_AirDropFrequency": "AirDropFrequency"})
-        
-        self.ui_map.update({"txt_LandClaimCount": "LandClaimCount"})
-        self.ui_map.update({"txt_LandClaimSize": "LandClaimSize"})
-        self.ui_map.update({"combo_EACEnabled": "EACEnabled"})
-        self.ui_map.update({"combo_TwitchServerPermission": "TwitchServerPermission"})
-        self.ui_map.update({"combo_DynamicMeshEnabled": "DynamicMeshEnabled"})
-
-    def load_settings_into_ui(self):
+    def __init__(self, main_window):
         """
-        1. Reads serverconfig.xml via XMLParser.
-        2. Scrapes Comments for Static Help Labels (ARKASM-style).
-        3. Updates the Registry.
-        4. Populates UI Widgets.
+        Initialize the Settings Bridge.
+        :param main_window: Reference to the Main Window (to access UI widgets).
         """
-        if not state.server_path:
-            return
-
-        self.xml_parser = XMLConfigParser(state.server_path)
+        self.main_window = main_window
+        self.ui = main_window.ui
+        self.target_file = "serverconfig.xml" 
         
-        # 1. Read Data & Comments
-        xml_data = self.xml_parser.read_config()
-        help_definitions = self.xml_parser.extract_help_definitions()
-        
-        if not xml_data:
-            log.warning(" XML Read returned empty.")
-            return
-
-        # Normalize the help dictionary to be completely case-insensitive
-        normalized_help = dict()
-        for original_key, help_text in help_definitions.items():
-            normalized_key = str(original_key).lower().strip()
-            normalized_help.update({normalized_key: help_text})
-
-        # 2. Update Registry
-        if state.registry:
-            for key, val in xml_data.items():
-                # We prefix with 'srv_' to distinguish server props from app props
-                state.registry.set(f"srv_{key}", val)
+        # XML Namespace mapping (Property Name -> UI Widget Name)
+        # Used to map Values AND Help Text (via lbl_help_{Property})
+        self.property_map = {
+            # Page 1: Identity & Web
+            "ServerName": "txt_ServerName",
+            "ServerDescription": "txt_ServerDescription",
+            "ServerWebsiteURL": "txt_ServerWebsiteURL",
+            "ServerPassword": "txt_ServerPassword",
+            "WebDashboardEnabled": "combo_WebDashboardEnabled",
             
-            state.registry.save_local()
-
-        # 3. Populate UI & Inject Static Help Text
-        log.info(" Hydrating UI from XML data...")
-        
-        for widget_name, property_key in self.ui_map.items():
+            # Page 2: Networking
+            "ServerPort": "txt_ServerPort",
+            "ServerVisibility": "combo_ServerVisibility",
+            "ServerMaxPlayerCount": "txt_ServerMaxPlayerCount",
+            "ServerReservedSlots": "txt_ServerReservedSlots",
             
-            # Fetch the Main Input Widget (Text Box / Combo Box)
-            widget = getattr(self.ui, widget_name, None)
-            if not widget:
-                continue
-                
-            # A. Set Main Value
-            value = xml_data.get(property_key)
-            if value is not None:
-                self._set_widget_value(widget, value)
-                
-            # B. Target the Static Help Label (Created dynamically in admin_layouts.py)
-            help_label_name = f"lbl_help_{property_key}"
-            help_label = getattr(self.ui, help_label_name, None)
+            # Page 3: Admin
+            "TelnetEnabled": "combo_TelnetEnabled",
+            "TelnetPort": "txt_TelnetPort",
+            "TelnetPassword": "txt_TelnetPassword",
+            "AdminFileName": "txt_AdminFileName",
+            "UserDataFolder": "txt_UserDataFolder",
             
-            if help_label is not None:
-                search_key = str(property_key).lower().strip()
-                raw_help = normalized_help.get(search_key)
-                
-                if raw_help is not None:
-                    # Clean up the raw XML comment text for a clean UI read
-                    clean_help = raw_help.replace("<!--", "").replace("-->", "").strip()
-                    help_label.setText(clean_help)
-                else:
-                    help_label.setText("No official description available.")
+            # Page 4: World
+            "GameWorld": "txt_GameWorld",
+            "WorldGenSize": "txt_WorldGenSize",
+            "WorldGenSeed": "txt_WorldGenSeed",
+            "GameName": "txt_GameName",
+            "GameMode": "txt_GameMode",
+            
+            # Page 5: Difficulty
+            "GameDifficulty": "txt_GameDifficulty",
+            "DayNightLength": "txt_DayNightLength",
+            "DayLightLength": "txt_DayLightLength",
+            "XPMultiplier": "txt_XPMultiplier",
+            "BlockDamagePlayer": "txt_BlockDamagePlayer",
+            
+            # Page 6: Rules
+            "DropOnDeath": "combo_DropOnDeath",
+            "DropOnQuit": "combo_DropOnQuit",
+            "PlayerKillingMode": "combo_PlayerKillingMode",
+            "BloodMoonFrequency": "txt_BloodMoonFrequency",
+            
+            # Page 7: Zombies
+            "EnemySpawnMode": "combo_EnemySpawnMode",
+            "BloodMoonEnemyCount": "txt_BloodMoonEnemyCount",
+            "ZombieMove": "combo_ZombieMove",
+            "ZombieMoveNight": "combo_ZombieMoveNight",
+            "ZombieFeralMove": "combo_ZombieFeralMove",
+            
+            # Page 8: Loot
+            "LootAbundance": "txt_LootAbundance",
+            "LootRespawnDays": "txt_LootRespawnDays",
+            "AirDropFrequency": "txt_AirDropFrequency",
+            "PartySharedKillRange": "txt_PartySharedKillRange",
+            
+            # Page 9: Land Claim
+            "LandClaimSize": "txt_LandClaimSize",
+            "LandClaimDeadZone": "txt_LandClaimDeadZone",
+            "LandClaimExpiryTime": "txt_LandClaimExpiryTime",
+            "EACEnabled": "combo_EACEnabled"
+        }
 
-    def save_settings_from_ui(self):
+    # region [READ_LOGIC]
+    def load_from_xml(self):
         """
-        1. Reads values from UI Widgets.
-        2. Updates Registry.
-        3. Writes to serverconfig.xml via XMLParser.
+        Reads serverconfig.xml.
+        1. Parses Values using ElementTree.
+        2. Parses Comments/Help using Raw Text Regex.
+        3. Populates UI Widgets and Help Labels.
         """
-        if not state.server_path:
-            log.error(" Save failed: No server path.")
+        # Resolve path
+        if not os.path.exists(self.target_file):
+            cwd_path = os.path.join(os.getcwd(), "serverconfig.xml")
+            if os.path.exists(cwd_path):
+                self.target_file = cwd_path
+            else:
+                print(f"[BRIDGE] Warning: {self.target_file} not found. Skipping load.")
+                return False
+
+        # Phase 1: Value Parsing (ElementTree)
+        try:
+            tree = ET.parse(self.target_file)
+            root = tree.getroot()
+            
+            for prop in root.findall('property'):
+                name = prop.get('name')
+                value = prop.get('value')
+                
+                if name in self.property_map:
+                    widget_name = self.property_map[name]
+                    self._set_widget_value(widget_name, value)
+                    
+        except Exception as e:
+            print(f"[BRIDGE] XML Value Parse Error: {e}")
             return False
 
-        self.xml_parser = XMLConfigParser(state.server_path)
-        registry_updates = dict()
-        
-        log.info(" Harvesting UI data...")
-        
-        for widget_name, property_key in self.ui_map.items():
-            widget = getattr(self.ui, widget_name, None)
-            if not widget:
-                continue
-                
-            value = self._get_widget_value(widget)
-            
-            # Store for XML writer using safe .update()
-            registry_updates.update({property_key: value})
-            
-            # Store in Registry
-            if state.registry:
-                state.registry.set(f"srv_{property_key}", value)
-
-        # Commit to Disk
-        success = self.xml_parser.write_config(registry_updates)
-        
-        if success and state.registry:
-            state.registry.save_local()
-            
-        return success
-
-    def _set_widget_value(self, widget, value):
-        """ Internal helper to handle different widget types safely. """
+        # Phase 2: Comment/Help Parsing (Raw Text)
         try:
-            val_str = str(value)
+            self._scrape_help_text()
+        except Exception as e:
+            print(f"[BRIDGE] Help Text Scrape Error: {e}")
+
+        print(f"[BRIDGE] XML Data & Intelligence Loaded: {self.target_file}")
+        return True
+
+    def _scrape_help_text(self):
+        """
+        Reads the raw file to extract <!-- comments --> associated with properties.
+        """
+        with open(self.target_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        # Dictionary to store found descriptions: { "GameDifficulty": "0-5..." }
+        descriptions = {}
+        
+        # Regex to find property name: name="SomeProp"
+        name_pattern = re.compile(r'name="(\w+)"')
+        # Regex to find comment: <!-- text -->
+        comment_pattern = re.compile(r'<!--(.*?)-->')
+
+        for i, line in enumerate(lines):
+            # Check if this line defines a property
+            name_match = name_pattern.search(line)
+            if name_match:
+                prop_name = name_match.group(1)
+                
+                # Strategy: Look for comment on SAME line, or NEXT line
+                comment_text = ""
+                
+                # Check Same Line
+                comment_match = comment_pattern.search(line)
+                if comment_match:
+                    comment_text = comment_match.group(1).strip()
+                
+                # If not found, check Next Line (commonly used in 7D2D config)
+                elif i + 1 < len(lines):
+                    next_line = lines[i+1]
+                    next_comment_match = comment_pattern.search(next_line)
+                    if next_comment_match:
+                        comment_text = next_comment_match.group(1).strip()
+
+                if comment_text:
+                    descriptions[prop_name] = comment_text
+
+        # Inject into UI
+        self._inject_descriptions(descriptions)
+
+    def _inject_descriptions(self, descriptions):
+        """
+        Updates the 'lbl_help_X' widgets in the UI.
+        """
+        for xml_key, widget_name in self.property_map.items():
+            if xml_key in descriptions:
+                # Construct help label name: lbl_help_ServerName
+                help_widget_name = f"lbl_help_{xml_key}"
+                
+                if hasattr(self.ui, help_widget_name):
+                    help_label = getattr(self.ui, help_widget_name)
+                    if isinstance(help_label, QLabel):
+                        help_label.setText(descriptions[xml_key])
+                        # Optional: Style update to indicate success
+                        # help_label.setStyleSheet("color: #00FFCC; font-size: 10px;")
+
+    def _set_widget_value(self, widget_name, value):
+        """
+        Helper: Finds the widget by name and sets its value/text.
+        """
+        if hasattr(self.ui, widget_name):
+            widget = getattr(self.ui, widget_name)
             
             if isinstance(widget, QLineEdit):
-                widget.setText(val_str)
-                widget.setCursorPosition(0)
-                
+                widget.setText(str(value))
+                widget.setCursorPosition(0) # Reset cursor to start
             elif isinstance(widget, QComboBox):
-                # Try to find the item, if not found, add it temporarily or ignore
-                index = widget.findText(val_str)
+                # Try to match the text (case-insensitive search is harder, assuming exact match)
+                index = widget.findText(str(value))
                 if index >= 0:
                     widget.setCurrentIndex(index)
                 else:
-                    # For things like 'GameWorld', we might need to add it dynamically from XML
-                    widget.addItem(val_str)
-                    widget.setCurrentText(val_str)
-                    
+                    # Handle boolean conversion for combos (true/false)
+                    lower_val = str(value).lower()
+                    if lower_val == "true":
+                        idx_t = widget.findText("true")
+                        if idx_t >= 0: widget.setCurrentIndex(idx_t)
+                    elif lower_val == "false":
+                        idx_f = widget.findText("false")
+                        if idx_f >= 0: widget.setCurrentIndex(idx_f)
             elif isinstance(widget, QCheckBox):
-                widget.setChecked(val_str.lower() == "true")
-                
-            elif isinstance(widget, QSpinBox):
-                if val_str.isdigit():
-                    widget.setValue(int(val_str))
-                    
-        except Exception as e:
-            log.warning(f" Widget Set Error: {e}")
+                widget.setChecked(str(value).lower() == "true")
+    # endregion
 
-    def _get_widget_value(self, widget):
-        """ Internal helper to extract values based on widget type safely. """
+    # region [WRITE_LOGIC]
+    def save_to_xml(self):
+        """
+        Reads the UI widgets and updates serverconfig.xml.
+        """
+        if not os.path.exists(self.target_file):
+            return False
+
         try:
-            if isinstance(widget, QLineEdit):
-                return widget.text().strip()
+            # Create a backup
+            shutil.copy2(self.target_file, self.target_file + ".bak")
+            
+            tree = ET.parse(self.target_file)
+            root = tree.getroot()
+            
+            changes_count = 0
+            
+            for xml_key, widget_name in self.property_map.items():
+                new_value = self._get_widget_value(widget_name)
                 
+                if new_value is not None:
+                    # Search for property
+                    for prop in root.findall('property'):
+                        if prop.get('name') == xml_key:
+                            # Only update if changed
+                            if prop.get('value') != str(new_value):
+                                prop.set('value', str(new_value))
+                                changes_count += 1
+                            break
+            
+            # Write back
+            tree.write(self.target_file, encoding="UTF-8", xml_declaration=True)
+            print(f"[BRIDGE] Saved {changes_count} settings to {self.target_file}")
+            return True
+
+        except Exception as e:
+            print(f"[BRIDGE] Save Error: {e}")
+            return False
+
+    def _get_widget_value(self, widget_name):
+        """
+        Helper: Finds the widget and extracts its current value.
+        """
+        if hasattr(self.ui, widget_name):
+            widget = getattr(self.ui, widget_name)
+            
+            if isinstance(widget, QLineEdit):
+                return widget.text()
             elif isinstance(widget, QComboBox):
                 return widget.currentText()
-                
             elif isinstance(widget, QCheckBox):
                 return "true" if widget.isChecked() else "false"
-                
-            elif isinstance(widget, QSpinBox):
-                return str(widget.value())
-                
-            return ""
-            
-        except Exception as e:
-            log.warning(f" Widget Get Error: {e}")
-            return ""
+        
+        return None
+    # endregion

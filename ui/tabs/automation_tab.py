@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR UI: AUTOMATION TAB - v21.2
+# ZERO HOUR UI: AUTOMATION TAB - v23.0
 # =========================================================
 # ROLE: Manages Background Tasks (Backups, Auto-Restarts,
 #       and Discord Webhooks).

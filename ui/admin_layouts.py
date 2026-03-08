@@ -1,5 +1,5 @@
 ﻿# ==============================================================================
-# ZERO HOUR UI: ADMIN LAYOUTS - v21.2
+# ZERO HOUR UI: ADMIN LAYOUTS - v23.0
 # ==============================================================================
 # ROLE: The "Skeleton" of the Application. Builds the Global Header, 
 #       Navigation Bar, Tactical Toolbar, and the Central Content Stack.

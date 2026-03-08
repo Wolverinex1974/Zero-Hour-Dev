@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: ARCHIVER ENGINE - v21.2 (SPLITTER ENABLED)
+# ZERO HOUR CORE: ARCHIVER ENGINE - v23.0 (SPLITTER ENABLED)
 # =========================================================
 # ROLE: Data Preservation, Log Rotation, & Mod Compression
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

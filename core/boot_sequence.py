@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: BOOT SEQUENCE - v21.2
+# ZERO HOUR CORE: BOOT SEQUENCE - v23.0
 # =========================================================
 # ROLE: Environment Initialization & Pre-Flight Checks
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

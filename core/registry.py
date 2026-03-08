@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: REGISTRY ENGINE - v21.2 (STABLE)
+# ZERO HOUR CORE: REGISTRY ENGINE - v23.0 (STABLE)
 # =========================================================
 # ROLE: Persistent Preference Storage (JSON)
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

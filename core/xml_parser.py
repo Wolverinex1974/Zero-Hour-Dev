@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: XML CONFIG PARSER - v21.2
+# ZERO HOUR CORE: XML CONFIG PARSER - v23.0
 # =========================================================
 # ROLE: Non-Destructive serverconfig.xml Read/Write Engine
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

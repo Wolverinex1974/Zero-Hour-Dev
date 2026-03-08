@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR UI: DIALOGS - v21.2
+# ZERO HOUR UI: DIALOGS - v23.0
 # =========================================================
 # ROLE: Isolated UI Popups and Modals
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

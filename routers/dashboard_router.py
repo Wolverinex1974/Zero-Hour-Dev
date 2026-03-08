@@ -1,25 +1,25 @@
+# ==============================================================================
+# ZERO HOUR ROUTER: DASHBOARD (REACTOR) - v23.0
+# ==============================================================================
+# ROLE: Controller for Server Process, Log Streaming, and System Events.
+# STRATEGY: Full Vertical Source - No Semicolons - No Shorthand
+# ==============================================================================
+# PHASE 23 UPDATE (LOGGING REPAIR):
+# FIX: Split logging channels.
+#      - Channel A: System Events -> txt_system_log (Left Box)
+#      - Channel B: Reactor Stream -> txt_reactor_stream (Right Box)
+# FIX: Wired 'handle_process_output' exclusively to Channel B.
+# ==============================================================================
+
 import os
 import sys
 import platform
 import datetime
 from PySide6.QtCore import QObject, QProcess, Signal
 
-# region [METADATA]
-# FILE: routers/dashboard_router.py
-# DESC: Controller logic for the Main Dashboard (Reactor)
-# AUTH: Phase 21 Refactor - v21.2
-# -----------------------------------------------------------------------------
-# RESPONSIBILITIES:
-# 1. Server Process Management (Start/Stop/Kill)
-# 2. Log Streaming (Standard Output capture)
-# 3. Quick Actions (Folder navigation)
-# 4. Status LED Updates
-# endregion
-
 class DashboardRouter(QObject):
-    # region [SIGNALS]
-    server_status_changed = Signal(str)  # "ONLINE", "OFFLINE", "BOOTING"
-    # endregion
+    # Signal emitted when server state changes (Online/Offline/Booting)
+    server_status_changed = Signal(str)
 
     def __init__(self, main_window):
         """
@@ -46,7 +46,7 @@ class DashboardRouter(QObject):
         """
         Bind UI buttons to Logic functions.
         """
-        # Server Control Buttons - Direct Access
+        # Server Control Buttons
         if hasattr(self.ui, 'btn_start_server'):
             self.ui.btn_start_server.clicked.connect(self.start_server_sequence)
         
@@ -56,13 +56,15 @@ class DashboardRouter(QObject):
         if hasattr(self.ui, 'btn_shutdown_dialog'):
              self.ui.btn_shutdown_dialog.clicked.connect(self.initiate_graceful_shutdown)
 
-        # File System Navigation
+        # File System Navigation (Tactical Toolbar)
         if hasattr(self.ui, 'btn_open_root'):
             self.ui.btn_open_root.clicked.connect(lambda: self.open_file_explorer("root"))
         if hasattr(self.ui, 'btn_open_logs'):
             self.ui.btn_open_logs.clicked.connect(lambda: self.open_file_explorer("logs"))
+        if hasattr(self.ui, 'btn_save_data'):
+            self.ui.btn_save_data.clicked.connect(lambda: self.open_file_explorer("saves"))
 
-        # Process Signals
+        # Process Signals (The Reactor Core)
         self.server_process.readyReadStandardOutput.connect(self.handle_process_output)
         self.server_process.stateChanged.connect(self.handle_state_change)
         self.server_process.finished.connect(self.handle_process_finished)
@@ -72,8 +74,51 @@ class DashboardRouter(QObject):
         Set initial button states based on assumption that server is OFF.
         """
         self.update_status_led("OFFLINE")
-        if hasattr(self.ui, 'btn_start_server'): self.ui.btn_start_server.setEnabled(True)
-        if hasattr(self.ui, 'btn_stop_server'): self.ui.btn_stop_server.setEnabled(False)
+        if hasattr(self.ui, 'btn_start_server'): 
+            self.ui.btn_start_server.setEnabled(True)
+        if hasattr(self.ui, 'btn_stop_server'): 
+            self.ui.btn_stop_server.setEnabled(False)
+    # endregion
+
+    # region [LOGGING_CHANNELS]
+    def append_log(self, text):
+        """
+        PUBLIC METHOD: Called by main.py and other routers.
+        Routes messages to the SYSTEM LOG (Left Box).
+        """
+        self.append_system_log(text)
+
+    def append_system_log(self, text):
+        """
+        Writes to 'txt_system_log' (Left Box).
+        Used for internal manager events (Config saved, Watchdog triggered, etc).
+        """
+        if not text: return
+        timestamp = datetime.datetime.now().strftime("[%H:%M:%S]")
+        formatted_line = f"{timestamp} {text}"
+        
+        if hasattr(self.ui, 'txt_system_log'):
+            self.ui.txt_system_log.append(formatted_line)
+            # Auto-scroll
+            sb = self.ui.txt_system_log.verticalScrollBar()
+            sb.setValue(sb.maximum())
+
+    def append_reactor_log(self, text):
+        """
+        Writes to 'txt_reactor_stream' (Right Box).
+        Used EXCLUSIVELY for the dedicated server console output.
+        """
+        if not text: return
+        # Note: Server output often has its own timestamps, but we prepend ours just in case
+        # timestamp = datetime.datetime.now().strftime("[%H:%M:%S]")
+        # formatted_line = f"{timestamp} {text}"
+        
+        # Raw output is usually better for the console stream
+        if hasattr(self.ui, 'txt_reactor_stream'):
+            self.ui.txt_reactor_stream.append(text)
+            # Auto-scroll
+            sb = self.ui.txt_reactor_stream.verticalScrollBar()
+            sb.setValue(sb.maximum())
     # endregion
 
     # region [REACTOR_LOGIC_START]
@@ -81,7 +126,7 @@ class DashboardRouter(QObject):
         """
         Executes the server startup sequence.
         """
-        self.append_log(">> INITIATING STARTUP SEQUENCE...")
+        self.append_system_log(">> INITIATING STARTUP SEQUENCE...")
         
         # 1. Locate the Executable
         server_executable = "start_dedicated_server.bat" 
@@ -90,8 +135,9 @@ class DashboardRouter(QObject):
         # Check if file exists
         full_path = os.path.join(working_dir, server_executable)
         if not os.path.exists(full_path):
-            self.append_log(f"!! CRITICAL: Could not find {server_executable}")
-            self.append_log(f"!! SEARCHED: {full_path}")
+            self.append_system_log(f"!! CRITICAL: Could not find {server_executable}")
+            self.append_system_log(f"!! SEARCHED: {full_path}")
+            self.append_system_log("!! HINT: Did you run Provisioning Step B?")
             return
 
         # 2. Lock UI
@@ -99,6 +145,7 @@ class DashboardRouter(QObject):
         if hasattr(self.ui, 'btn_stop_server'): self.ui.btn_stop_server.setEnabled(True)
         
         # 3. Launch QProcess
+        self.append_system_log(f"LAUNCHING: {server_executable}")
         self.server_process.setWorkingDirectory(working_dir)
         self.server_process.setProgram(full_path)
         self.server_process.start()
@@ -111,48 +158,36 @@ class DashboardRouter(QObject):
         """
         Forcefully terminates the server process.
         """
-        self.append_log(">> KILL SIGNAL SENT.")
+        self.append_system_log(">> KILL SIGNAL SENT TO KERNEL.")
         self.server_process.kill()
 
     def initiate_graceful_shutdown(self):
         """
         Sends a graceful shutdown command via Telnet (Placeholder for Logic).
         """
-        self.append_log(">> GRACEFUL SHUTDOWN TRIGGERED (Telnet Link Pending).")
+        self.append_system_log(">> GRACEFUL SHUTDOWN TRIGGERED (Telnet Link Pending).")
     # endregion
 
-    # region [LOG_STREAMING]
+    # region [PROCESS_HANDLER]
     def handle_process_output(self):
         """
-        Reads stdout from the running process and appends it to the text area.
+        Reads stdout from the running process and sends it to the REACTOR LOG.
         """
         data = self.server_process.readAllStandardOutput()
         text = bytes(data).decode("utf-8", errors="ignore")
-        self.append_log(text.strip())
-
-    def append_log(self, text):
-        """
-        Helper to append text to the dashboard console widget.
-        """
-        if not text: return
-        timestamp = datetime.datetime.now().strftime("[%H:%M:%S]")
-        formatted_line = f"{timestamp} {text}"
         
-        # Direct Access to Widget
-        if hasattr(self.ui, 'txt_reactor_stream'):
-            self.ui.txt_reactor_stream.append(formatted_line)
-            # Auto-scroll logic is usually handled by the widget's default behavior or:
-            # sb = self.ui.txt_reactor_stream.verticalScrollBar()
-            # sb.setValue(sb.maximum())
-    # endregion
+        # Clean up whitespace
+        clean_text = text.strip()
+        if clean_text:
+            self.append_reactor_log(clean_text)
 
-    # region [PROCESS_STATE_HANDLING]
     def handle_state_change(self, new_state):
         """
         Reacts to QProcess state changes (NotRunning, Starting, Running).
         """
         if new_state == QProcess.ProcessState.Running:
             self.update_status_led("ONLINE")
+            self.append_system_log(">> REACTOR STATUS: ONLINE")
             self.is_running = True
         elif new_state == QProcess.ProcessState.NotRunning:
             self.update_status_led("OFFLINE")
@@ -162,9 +197,13 @@ class DashboardRouter(QObject):
         """
         Triggered when the process actually ends.
         """
-        self.append_log(f">> PROCESS TERMINATED (Code: {exit_code})")
-        if hasattr(self.ui, 'btn_start_server'): self.ui.btn_start_server.setEnabled(True)
-        if hasattr(self.ui, 'btn_stop_server'): self.ui.btn_stop_server.setEnabled(False)
+        self.append_system_log(f">> PROCESS TERMINATED (Code: {exit_code})")
+        
+        if hasattr(self.ui, 'btn_start_server'): 
+            self.ui.btn_start_server.setEnabled(True)
+        if hasattr(self.ui, 'btn_stop_server'): 
+            self.ui.btn_stop_server.setEnabled(False)
+            
         self.update_status_led("OFFLINE")
     # endregion
 
@@ -177,8 +216,11 @@ class DashboardRouter(QObject):
         
         if target == "logs":
             path_to_open = os.path.join(path_to_open, "7DaysToDie_Data")
+        elif target == "saves":
+            # Try to guess saves location or use default
+            path_to_open = os.path.join(os.getenv('APPDATA'), "7DaysToDie", "Saves")
             
-        self.append_log(f">> OPENING EXPLORER: {target.upper()}")
+        self.append_system_log(f">> OPENING EXPLORER: {target.upper()}")
         
         if platform.system() == "Windows":
             os.startfile(path_to_open)

@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QMessageBox, QTableWidgetItem
 # region [METADATA]
 # FILE: routers/economy_router.py
 # DESC: Controller for Server Economy
-# AUTH: Phase 21 Refactor - v21.2
+# AUTH: Phase 21 Refactor - v23.0
 # endregion
 
 class EconomyRouter(QObject):

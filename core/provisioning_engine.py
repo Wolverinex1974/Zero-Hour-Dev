@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: PROVISIONING ENGINE - v21.2
+# ZERO HOUR CORE: PROVISIONING ENGINE - v23.0
 # =========================================================
 # ROLE: Script-Injected SteamCMD Deployment & Verification
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

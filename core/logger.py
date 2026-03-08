@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: TELEMETRY ENGINE - v21.2
+# ZERO HOUR CORE: TELEMETRY ENGINE - v23.0
 # =========================================================
 # ROLE: Dual-Stream Flight Recorder (Disk + UI Bridge)
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

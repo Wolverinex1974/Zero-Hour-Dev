@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: MOD CONTROLLER - v21.2
+# ZERO HOUR CORE: MOD CONTROLLER - v23.0
 # =========================================================
 # ROLE: Physical File and Manifest Orchestration
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

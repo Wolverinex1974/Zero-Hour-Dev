@@ -1,258 +1,240 @@
-# =========================================================
-# ZERO HOUR UI: NEXUS STYLER - v21.2 (PHASE 13)
-# =========================================================
-# ROLE: Centralized Visual Logic & Tactile Feedback
+# ==============================================================================
+# ZERO HOUR UI: NEXUS STYLER - v23.0
+# ==============================================================================
+# ROLE: The "Paint". Centralized CSS Stylesheet Manager.
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand
-# =========================================================
-# PHASE 13 FEATURES:
-# FEATURE: Added 'Tactical Navigation' button styles.
-# FEATURE: Centralized 'Sovereign' color constants.
-# FIX: Refined Scrollbar width for high-DPI monitors.
-# =========================================================
+# ==============================================================================
+# PHASE 23 UPDATE (VISUAL REPAIR):
+# FIX: Added 'QPushButton:checked' state for Navigation Tabs (Blue Highlight).
+# FIX: Hardcoded Green/Red styles for Start/Stop buttons via ID selectors.
+# FIX: Refined Scrollbar and GroupBox styling for high contrast.
+# ==============================================================================
 
 class NexusStyler:
     """
-    The Aesthetic Engine for the Paradoxal Ecosystem.
-    Manages stylesheets for Zero Hour and the Launcher.
-    Implements tactile physical feedback and high-density dashboard layouts.
+    Static class that returns the master QSS (Qt Style Sheet) string.
+    This defines the "Zero Hour Industrial" theme.
     """
 
-    # --- SOVEREIGN COLOR PALETTE ---
-    # Standardized hex codes for industrial uniformity.
-    ACCENT_GREEN = "#2ecc71"
-    ACCENT_PURPLE = "#9b59b6"
-    ACCENT_ORANGE = "#e67e22"
-    ACCENT_RED = "#c0392b"
-    ACCENT_BLUE = "#2980b9"
-    BG_MAIN = "#1e1e1e"
-    BG_DARK = "#121212"
-    BG_PANEL = "#252525"
-    BG_INPUT = "#000000"
-    TEXT_MAIN = "#e0e0e0"
-    TEXT_DIM = "#aaaaaa"
+    @staticmethod
+    def get_industrial_style():
+        return """
+        /* -----------------------------------------------------------------
+           GLOBAL WINDOW SETTINGS
+           ----------------------------------------------------------------- */
+        QMainWindow, QWidget#central_widget {
+            background-color: #121212;
+            color: #E0E0E0;
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
+        }
 
-    @classmethod
-    def get_industrial_style(cls):
-        """
-        Generates and returns the master QSS stylesheet string.
-        Contains the tactile physics logic and sidebar tab separation.
-        """
-        style_string = f"""
-        /* --- MAIN WINDOW ARCHITECTURE --- */
-        QMainWindow, QWidget {{ 
-            background-color: {cls.BG_MAIN}; 
-            color: {cls.TEXT_MAIN}; 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-        }}
-
-        /* --- TAB NAVIGATION SYSTEM --- */
-        QTabWidget::pane {{ 
-            border: 1px solid #333333; 
-            background: {cls.BG_MAIN}; 
-            top: -1px;
-        }}
+        /* -----------------------------------------------------------------
+           GLOBAL TEXT ELEMENTS
+           ----------------------------------------------------------------- */
+        QLabel {
+            color: #E0E0E0;
+            font-size: 12px;
+        }
         
-        QTabBar::tab {{ 
-            background: #2d2d2d; 
-            color: {cls.TEXT_DIM}; 
-            padding: 12px 30px; 
-            border: 1px solid #1a1a1a; 
-            margin-right: 2px;
-        }}
-        
-        QTabBar::tab:selected {{ 
-            background: #3d3d3d; 
-            color: #ffffff; 
-            border-bottom: 2px solid {cls.ACCENT_PURPLE};
-        }}
-
-        /* --- SETTINGS SIDEBAR (PHYSICAL CARD UPDATE) --- */
-        QListWidget#nav_settings {{
-            background-color: transparent;
-            border: none;
-            color: {cls.TEXT_DIM};
-            outline: none;
-        }}
-
-        QListWidget#nav_settings::item {{
-            background-color: {cls.BG_PANEL};
-            border: 1px solid #333333;
-            border-radius: 2px;
-            margin-bottom: 4px;
-            padding: 12px;
-        }}
-
-        QListWidget#nav_settings::item:selected {{
-            background-color: #3d3d3d;
-            color: {cls.ACCENT_GREEN};
-            border: 1px solid {cls.ACCENT_GREEN};
+        QLabel#lbl_app_title {
+            color: #FFFFFF;
+            font-size: 18px;
             font-weight: bold;
-        }}
+            letter-spacing: 2px;
+        }
 
-        QListWidget#nav_settings::item:hover {{
-            background-color: #2a2a2a;
-            border: 1px solid #555555;
-        }}
+        QLabel#lbl_active_profile {
+            color: #00A8E8;
+            font-weight: bold;
+            font-size: 12px;
+        }
 
-        /* --- TACTICAL NAVIGATION SUITE (PHASE 13) --- */
-        /* Specific styling for the top-bar folder buttons */
-        QPushButton#tactical_button {{
-            background-color: #3d3d3d;
-            border: 1px solid #555;
-            height: 25px;
-            font-size: 11px;
-            padding: 4px 10px;
-        }}
-        
-        QPushButton#tactical_button:hover {{
-            background-color: #4d4d4d;
-            border: 1px solid {cls.ACCENT_PURPLE};
-        }}
-        
-        QPushButton#tactical_button:pressed {{
-            background-color: #222;
-            border: 1px solid {cls.ACCENT_GREEN};
-            padding-top: 6px; /* Tactile sink */
-        }}
+        /* -----------------------------------------------------------------
+           NAVIGATION BAR (The Tabs)
+           ----------------------------------------------------------------- */
+        QFrame#nav_frame {
+            background-color: #1A1A1A;
+            border-bottom: 2px solid #333;
+        }
 
-        /* --- STANDARD BUTTON PROTOCOL --- */
-        QPushButton {{ 
-            background-color: #3d3d3d; 
-            color: #ffffff; 
-            border: 1px solid #1a1a1a; 
-            padding: 8px 15px; 
+        /* Default Tab State */
+        QPushButton#nav_btn {
+            background-color: transparent;
+            color: #888;
+            border: none;
+            border-right: 1px solid #333;
             font-weight: bold;
             text-transform: uppercase;
-            outline: none;
-        }}
-        
-        QPushButton:hover {{ 
-            background-color: #4d4d4d; 
-            border: 1px solid {cls.ACCENT_GREEN};
-        }}
-        
-        /* THE PHYSICAL SINK: Simulates mechanical compression */
-        QPushButton:pressed {{ 
-            background-color: #1a1a1a;
-            padding-top: 11px;
-            padding-left: 18px;
-            border: 1px solid #000000;
-        }}
-
-        QPushButton:disabled {{ 
-            background-color: {cls.BG_PANEL}; 
-            color: #555555; 
-            border: 1px solid #1a1a1a;
-        }}
-
-        /* --- SPECIALIZED ACTION BUTTONS --- */
-        #btn_commit_deploy {{ 
-            background-color: {cls.ACCENT_PURPLE}; 
-            color: white; 
-        }}
-        #btn_commit_deploy:hover {{ 
-            background-color: #8e44ad; 
-        }}
-
-        #btn_start_server {{ 
-            background-color: #27ae60; 
-            color: white; 
-        }}
-        #btn_start_server:hover {{ 
-            background-color: {cls.ACCENT_GREEN}; 
-        }}
-
-        #btn_stop_server {{ 
-            background-color: {cls.ACCENT_RED}; 
-            color: white; 
-        }}
-        #btn_stop_server:hover {{ 
-            background-color: #e74c3c; 
-        }}
-
-        #btn_save_news {{ 
-            background-color: {cls.ACCENT_BLUE}; 
-            color: white; 
-        }}
-        
-        #btn_validate_env {{
-            background-color: #8e44ad;
-            color: white;
-        }}
-
-        /* --- DATA GRID & TABLE INTERFACE --- */
-        QTableWidget {{ 
-            background-color: {cls.BG_PANEL}; 
-            gridline-color: #333333; 
-            color: #ffffff; 
-            border: 1px solid #333333;
-            selection-background-color: #3d3d3d;
-        }}
-        
-        QHeaderView::section {{ 
-            background-color: #2d2d2d; 
-            color: {cls.TEXT_DIM}; 
-            padding: 10px; 
-            border: 1px solid #1e1e1e; 
-            font-weight: bold;
-        }}
-
-        /* --- INPUT FIELD THEMING --- */
-        QTextEdit, QPlainTextEdit, QLineEdit {{ 
-            background-color: {cls.BG_INPUT}; 
-            color: {cls.ACCENT_GREEN}; 
-            border: 1px solid #333333; 
-            font-family: 'Consolas', 'Courier New', monospace;
-            padding: 5px;
-        }}
-
-        /* --- CONTAINERS & GROUP BOXES --- */
-        QGroupBox {{ 
-            border: 1px solid #333333; 
-            margin-top: 15px; 
-            padding-top: 15px; 
-            color: {cls.ACCENT_GREEN}; 
-            font-weight: bold; 
-        }}
-        
-        /* --- PROGRESS REPORTING SYSTEM --- */
-        QProgressBar {{ 
-            border: 1px solid #333333; 
-            background: #222222; 
-            text-align: center; 
-            color: white; 
-        }}
-        
-        QProgressBar::chunk {{ 
-            background-color: {cls.ACCENT_GREEN}; 
-        }}
-
-        /* --- SCROLLBAR ARCHITECTURE --- */
-        QScrollBar:vertical {{
-            border: none;
-            background: {cls.BG_DARK};
-            width: 12px;
+            padding: 10px;
             margin: 0px;
-        }}
-        
-        QScrollBar::handle:vertical {{
+            border-radius: 0px;
+        }
+
+        QPushButton#nav_btn:hover {
+            background-color: #252525;
+            color: #FFF;
+        }
+
+        /* Active Tab State (THE GHOST TAB FIX) */
+        QPushButton#nav_btn:checked {
+            background-color: #007ACC; /* Vivid Blue */
+            color: #FFFFFF;
+            border-bottom: 2px solid #FFFFFF;
+        }
+
+        /* -----------------------------------------------------------------
+           TACTICAL TOOLBAR (Header Buttons)
+           ----------------------------------------------------------------- */
+        QFrame#tactical_frame {
+            background-color: #0F0F0F;
+            border-bottom: 1px solid #333;
+        }
+
+        QPushButton#tactical_btn {
+            background-color: #222;
+            color: #DDD;
+            border: 1px solid #444;
+            border-radius: 3px;
+            padding: 5px 15px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        QPushButton#tactical_btn:hover {
+            background-color: #333;
+            border: 1px solid #666;
+        }
+
+        /* -----------------------------------------------------------------
+           REACTOR CONTROL (Traffic Lights)
+           ----------------------------------------------------------------- */
+        /* Start Server - Green */
+        QPushButton#btn_start_server {
+            background-color: #27ae60;
+            color: white;
+            font-weight: bold;
+            border: 1px solid #219150;
+            border-radius: 3px;
+        }
+        QPushButton#btn_start_server:hover {
+            background-color: #2ecc71;
+        }
+        QPushButton#btn_start_server:disabled {
+            background-color: #145a32;
+            color: #555;
+        }
+
+        /* Stop Server - Red */
+        QPushButton#btn_stop_server {
+            background-color: #c0392b;
+            color: white;
+            font-weight: bold;
+            border: 1px solid #a93226;
+            border-radius: 3px;
+        }
+        QPushButton#btn_stop_server:hover {
+            background-color: #e74c3c;
+        }
+        QPushButton#btn_stop_server:disabled {
+            background-color: #641e16;
+            color: #555;
+        }
+
+        /* Options / Shutdown - Grey */
+        QPushButton#btn_shutdown_dialog {
+            background-color: #7f8c8d;
+            color: white;
+            font-weight: bold;
+            border: 1px solid #626e6e;
+            border-radius: 3px;
+        }
+        QPushButton#btn_shutdown_dialog:hover {
+            background-color: #95a5a6;
+        }
+
+        /* -----------------------------------------------------------------
+           INPUT FIELDS & COMBO BOXES
+           ----------------------------------------------------------------- */
+        QLineEdit, QComboBox, QSpinBox {
+            background-color: #000000;
+            border: 1px solid #444;
+            color: #00FFCC; /* Cyberpunk Text */
+            padding: 5px;
+            selection-background-color: #007ACC;
+        }
+
+        QLineEdit:focus, QComboBox:focus {
+            border: 1px solid #007ACC;
+        }
+
+        QComboBox::drop-down {
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 20px;
+            border-left-width: 1px;
+            border-left-color: #444;
+            border-left-style: solid;
+        }
+
+        /* -----------------------------------------------------------------
+           SCROLL BARS (Thin Industrial)
+           ----------------------------------------------------------------- */
+        QScrollBar:vertical {
+            border: none;
+            background: #111;
+            width: 10px;
+            margin: 0px 0px 0px 0px;
+        }
+        QScrollBar::handle:vertical {
             background: #444;
             min-height: 20px;
-            border-radius: 2px;
-        }}
-        
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+            border-radius: 5px;
+        }
+        QScrollBar::handle:vertical:hover {
+            background: #666;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
             height: 0px;
-        }}
-        """
-        return style_string
+        }
 
-    @classmethod
-    def apply_dirty_state(cls, button, is_dirty):
+        /* -----------------------------------------------------------------
+           TABLES & LISTS
+           ----------------------------------------------------------------- */
+        QTableWidget, QListWidget, QTextEdit {
+            background-color: #0D0D0D;
+            border: 1px solid #333;
+            color: #CCC;
+            gridline-color: #333;
+        }
+        
+        QHeaderView::section {
+            background-color: #222;
+            color: #FFF;
+            padding: 5px;
+            border: 1px solid #333;
+            font-weight: bold;
+        }
+
+        QTableWidget::item:selected, QListWidget::item:selected {
+            background-color: #004466;
+            color: white;
+        }
+
+        /* -----------------------------------------------------------------
+           GROUP BOXES
+           ----------------------------------------------------------------- */
+        QGroupBox {
+            border: 1px solid #333;
+            margin-top: 10px;
+            padding-top: 15px;
+            font-weight: bold;
+            color: #00A8E8;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            left: 10px;
+            padding: 0 5px;
+            background-color: #121212; /* Matches window bg to look transparent */
+        }
         """
-        Shifts the button appearance based on unsaved logic.
-        """
-        if is_dirty:
-            button.setStyleSheet(f"background-color: {cls.ACCENT_PURPLE}; color: white;")
-        else:
-            button.setStyleSheet("background-color: #3d3d3d; color: white;")

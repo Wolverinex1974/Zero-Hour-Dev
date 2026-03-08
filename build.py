@@ -6,18 +6,18 @@ import time
 import logging
 
 # =========================================================
-# ZERO HOUR: INDUSTRIAL BUILDER - v21.2
+# ZERO HOUR: INDUSTRIAL BUILDER - v23.0
 # =========================================================
 # ROLE: Version Control & Executable Compilation
 # STRATEGY: Full Vertical Source - Router Aware - PySide6 Native
 # =========================================================
-# PHASE 21.2 FIX:
-# FIX: Adjusted Version Stamper Regex to accept 2-digit versions (e.g. v20.8).
-# FIX: Prevents "Skipped" files during update process.
+# PHASE 23 Fix:
+# FIX: Post refactor fixes
+# FIX: 
 # =========================================================
 
 # --- MASTER CONFIGURATION ---
-VERSION = "21.2"
+VERSION = "23.0"
 APP_NAME = "ZeroHour_Server_Manager"
 ICON_PATH = "assets/logo.ico"
 MAIN_SCRIPT = "main.py"
