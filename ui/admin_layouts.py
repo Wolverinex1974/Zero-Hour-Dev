@@ -1,397 +1,338 @@
-﻿# =========================================================
-# ZERO HOUR: LAYOUT ENGINE (TOP-NAV RESTORATION) - v21.2
-# =========================================================
-# ROLE: UI Construction & Crash Reporting
+﻿# ==============================================================================
+# ZERO HOUR UI: ADMIN LAYOUTS - v21.2
+# ==============================================================================
+# ROLE: The "Skeleton" of the Application. Builds the Global Header, 
+#       Navigation Bar, Tactical Toolbar, and the Central Content Stack.
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand
-# =========================================================
-# PHASE 20 UI RESTORATION:
-# FEATURE: Switched from Sidebar to Top-Horizontal Layout.
-# FEATURE: Added Global Reactor Controls (Redundant Start/Stop).
-# FEATURE: Restored Profile & Keep Alive Headers.
-# FIX: 100% Bracket-Free payload.
-# =========================================================
+# ==============================================================================
+# PHASE 22 UPDATE (VISUAL RESTORATION):
+# FIX: Integrated 'NexusStyler' to restore the "Zero Hour Dark" industrial theme.
+# FIX: Wired 'Tactical Navigation' buttons with correct ObjectNames for CSS styling.
+# FIX: Switched Tab instantiation to use 'TabBuilder.build(main_window)' pattern
+#      to match the Phase 20 architecture.
+# ==============================================================================
 
 import sys
 import os
-import datetime
-import traceback
+from PySide6.QtCore import Qt, QSize, QTimer
+from PySide6.QtGui import QIcon, QFont, QAction
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-    QStackedWidget, QFrame, QListWidget, QListWidgetItem, 
-    QSizePolicy, QScrollArea, QAbstractItemView, QComboBox,
-    QCheckBox, QButtonGroup
+    QWidget, 
+    QVBoxLayout, 
+    QHBoxLayout, 
+    QPushButton, 
+    QLabel, 
+    QStackedWidget, 
+    QFrame, 
+    QSpacerItem, 
+    QSizePolicy,
+    QGridLayout
 )
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QIcon, QFont, QColor
 
-# TAB BUILDERS
+# region [IMPORTS_THEME]
+from ui.nexus_styler import NexusStyler
+# endregion
+
+# region [IMPORTS_TABS]
+# CORRECTED: Importing the 'Builder' classes, not the raw widgets
 from ui.tabs.dashboard_tab import DashboardTabBuilder
 from ui.tabs.configuration_tab import ConfigurationTabBuilder
 from ui.tabs.forge_tab import ForgeTabBuilder
 from ui.tabs.economy_tab import EconomyTabBuilder
 from ui.tabs.automation_tab import AutomationTabBuilder
+from ui.tabs.faq_tab import FaqTabBuilder
+# endregion
 
-class ZeroHourLayout:
-    def __init__(self):
-        # --- CONTAINER SKELETON ---
-        self.main_window = None
-        self.central_widget = None
-        self.main_layout = None
-        self.content_stack = None
-        self.nav_group = None # Button Group for Tabs
-        
-        # --- SHARED WIDGET REGISTRY ---
-        
-        # Header: Profile & Identity
-        self.combo_profile_selector = None
-        self.btn_add_profile = None
-        self.btn_delete_profile = None
-        self.chk_keep_alive = None # Restored
-        
-        # Header: Tactical & Global Reactor
-        self.btn_open_root = None
-        self.btn_open_logs = None
-        self.btn_open_saves = None
-        self.btn_open_mods = None
-        
-        # GLOBAL CONTROLS (Always Visible)
-        self.btn_start_server_global = None
-        self.btn_shutdown_dialog_global = None
-        self.btn_stop_server_global = None
-        
-        # Nav Buttons
-        self.btn_nav_dashboard = None
-        self.btn_nav_config = None
-        self.btn_nav_forge = None
-        self.btn_nav_economy = None
-        self.btn_nav_automation = None
-        self.btn_nav_faq = None
-        
-        # Dashboard (Local Widgets)
-        self.lbl_instance_info = None
-        self.txt_system_log = None
-        self.btn_start_server = None # Local Redundancy
-        self.btn_stop_server = None  # Local Redundancy
-        self.lbl_watchdog_status = None
-        self.txt_reactor_stream = None
-        self.lbl_status = None # Footer Status
-        
-        # Config
-        self.txt_prof_name = None
-        self.txt_server_port = None
-        self.txt_target_repo = None
-        self.btn_save_identity = None
-        self.btn_save_srv_settings = None
-        
-        # Forge
-        self.table_mods = None
-        self.progressBar_forge = None
-        self.btn_commit_deploy = None
-        self.btn_install_mod = None
-        self.btn_scan_duplicates = None
-        self.btn_rebalance_mods = None
-        self.btn_run_audit = None
-        self.btn_export_audit = None
-        self.tree_conflicts = None
-        self.txt_atlas_desc = None
-        self.combo_atlas_status = None
-        
-        # Economy
-        self.table_players = None
-        self.table_store_items = None
-        self.btn_refresh_ledger = None
-        self.btn_store_add = None
-        self.btn_store_remove = None
-        self.btn_store_sync = None
-        
-        # Automation
-        self.btn_backup_now = None
-        self.chk_enable_watchdog = None
-        self.chk_announce_restart = None
-        self.txt_webhook_url = None
-
-        # Tab References
-        self.tab_dashboard = None
-        self.tab_config = None
-        self.tab_forge = None
-        self.tab_economy = None
-        self.tab_automation = None
+class ZeroHourLayout(object):
+    """
+    The main layout engine. This class constructs the visual hierarchy
+    of the main window.
+    """
 
     def setup_ui(self, main_window):
-        """Constructs the Top-Nav Layout matching the Screenshots."""
-        self._log_to_file("--- STARTING UI CONSTRUCTION (TOP-NAV) ---")
-        self.main_window = main_window
+        """
+        Builds the entire UI structure and attaches it to the main_window.
+        """
+        if not main_window.objectName():
+            main_window.setObjectName("MainWindow")
         
-        if hasattr(main_window, "resize"):
-            main_window.resize(1300, 900)
-            
-        main_window.setWindowTitle("Zero Hour Nexus Command v20.8 (TEST ENV)")
+        main_window.resize(1280, 850)
         
-        self.central_widget = QWidget()
+        # 1. APPLY THEME (The Paint)
+        # We inject the Industrial CSS immediately
+        industrial_style = NexusStyler.get_industrial_style()
+        main_window.setStyleSheet(industrial_style)
+
+        # 2. CENTRAL WIDGET
+        self.central_widget = QWidget(main_window)
+        self.central_widget.setObjectName("central_widget")
+        
+        # Main Vertical Layout (Top to Bottom)
+        self.main_layout = QVBoxLayout(self.central_widget)
+        self.main_layout.setSpacing(0)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 3. BUILD SECTIONS
+        self._build_header_frame()
+        self._build_tactical_toolbar()
+        self._build_navigation_bar()
+        self._build_content_stack(main_window) # Pass main_window for Builders
+        self._build_footer()
+
+        # 4. FINALIZE
         main_window.setCentralWidget(self.central_widget)
         
-        # Main Vertical Layout (Header -> Nav -> Content -> Footer)
-        self.main_layout = QVBoxLayout(self.central_widget)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.setSpacing(0)
-        
-        # 1. Build Header Rows
-        self._build_top_header()
-        self._build_tactical_row()
-        self._build_nav_bar()
-        
-        # 2. Build Content Stack
-        self._build_content_stack()
-        
-        # 3. Populate Tabs
-        self._populate_tabs(main_window)
-        
-        # 4. Build Footer
-        self._build_footer()
-        
-        # 5. Apply Styles
-        self._apply_global_styles(main_window)
-        self._log_to_file("--- UI CONSTRUCTION COMPLETE ---")
+        # Connect navigation buttons to the stack (Logic wiring)
+        self._connect_nav_buttons()
 
-    def _build_top_header(self):
-        """Row 1: Profile Selector, Keep Alive, Delete"""
-        header_frame = QFrame()
-        header_frame.setObjectName("TopHeader")
-        header_frame.setFixedHeight(60)
-        layout = QHBoxLayout(header_frame)
-        layout.setContentsMargins(15, 10, 15, 10)
-        
-        # Profile Section
-        layout.addWidget(QLabel("ACTIVE SERVER PROFILE:"))
-        
-        self.combo_profile_selector = QComboBox()
-        self.combo_profile_selector.setObjectName("combo_profile_selector")
-        self.combo_profile_selector.setMinimumWidth(250)
-        layout.addWidget(self.combo_profile_selector)
-        
-        self.btn_add_profile = QPushButton("+ ADD NEW SERVER")
-        self.btn_add_profile.setObjectName("btn_add_profile")
-        layout.addWidget(self.btn_add_profile)
-        
-        layout.addStretch()
-        
-        # Keep Alive
-        self.chk_keep_alive = QCheckBox("KEEP ALIVE (AUTO-RESTART)")
-        self.chk_keep_alive.setObjectName("chk_keep_alive")
-        self.chk_keep_alive.setChecked(True)
-        # Note: Logic usually binds this to the Watchdog
-        layout.addWidget(self.chk_keep_alive)
-        
-        layout.addStretch()
-        
-        # Delete
-        self.btn_delete_profile = QPushButton("DELETE PROFILE")
-        self.btn_delete_profile.setObjectName("btn_delete_profile")
-        self.btn_delete_profile.setStyleSheet("background-color: #c0392b; color: white;")
-        layout.addWidget(self.btn_delete_profile)
-        
-        self.main_layout.addWidget(header_frame)
+        # Set default page
+        self.content_stack.setCurrentIndex(0)
 
-    def _build_tactical_row(self):
-        """Row 2: Tactical Nav Buttons + GLOBAL Reactor Controls"""
-        tactical_frame = QFrame()
-        tactical_frame.setObjectName("TacticalRow")
-        tactical_frame.setFixedHeight(60)
-        layout = QHBoxLayout(tactical_frame)
-        layout.setContentsMargins(15, 5, 15, 5)
-        layout.setSpacing(10)
+    # region [SECTION_1_HEADER]
+    def _build_header_frame(self):
+        """
+        Constructs the top branding bar and Server Status indicator.
+        """
+        self.header_frame = QFrame(self.central_widget)
+        self.header_frame.setObjectName("header_frame")
+        self.header_frame.setMinimumHeight(60)
+        self.header_frame.setMaximumHeight(60)
+        self.header_frame.setFrameShape(QFrame.Shape.NoFrame)
+        self.header_frame.setFrameShadow(QFrame.Shadow.Raised)
+
+        self.header_layout = QHBoxLayout(self.header_frame)
+        self.header_layout.setContentsMargins(15, 0, 15, 0)
+        self.header_layout.setSpacing(10)
+
+        # Logo / Title
+        self.lbl_app_title = QLabel(self.header_frame)
+        self.lbl_app_title.setObjectName("lbl_app_title")
+        self.lbl_app_title.setText("ZERO HOUR | NEXUS COMMAND v21.2")
+        self.lbl_app_title.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        self.lbl_app_title.setStyleSheet("color: #FFFFFF; letter-spacing: 1px;")
+
+        # Active Profile Display
+        self.lbl_active_profile = QLabel(self.header_frame)
+        self.lbl_active_profile.setObjectName("lbl_active_profile")
+        self.lbl_active_profile.setText("ACTIVE PROFILE: NOT SELECTED")
+        self.lbl_active_profile.setStyleSheet("color: #00A8E8; font-weight: bold;")
+
+        # Spacer
+        self.header_spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        # Add to Layout
+        self.header_layout.addWidget(self.lbl_app_title)
+        self.header_layout.addSpacerItem(self.header_spacer)
+        self.header_layout.addWidget(self.lbl_active_profile)
         
-        # Label
-        lbl_tac = QLabel("TACTICAL NAV:")
-        lbl_tac.setStyleSheet("color: #8e44ad; font-weight: bold;")
-        layout.addWidget(lbl_tac)
-        
-        # Nav Buttons
+        # Add Header to Main Layout
+        self.main_layout.addWidget(self.header_frame)
+    # endregion
+
+    # region [SECTION_2_TACTICAL_TOOLBAR]
+    def _build_tactical_toolbar(self):
+        """
+        Constructs the row of 'Quick Action' buttons and Server Controls (Start/Stop).
+        """
+        self.tactical_frame = QFrame(self.central_widget)
+        self.tactical_frame.setObjectName("tactical_frame")
+        self.tactical_frame.setMinimumHeight(50)
+        self.tactical_frame.setMaximumHeight(50)
+        self.tactical_frame.setStyleSheet("background-color: #1A1A1A; border-bottom: 1px solid #333;")
+
+        self.tactical_layout = QHBoxLayout(self.tactical_frame)
+        self.tactical_layout.setContentsMargins(10, 5, 10, 5)
+        self.tactical_layout.setSpacing(10)
+
+        # -- LEFT SIDE: File Operations --
         self.btn_open_root = QPushButton("ROOT DIR")
-        self.btn_open_root.setObjectName("btn_open_root")
-        self.btn_open_root.setStyleSheet("background-color: #444; border: 1px solid #555;")
-        
-        self.btn_open_logs = QPushButton("SERVER LOGS")
-        self.btn_open_logs.setObjectName("btn_open_logs")
-        self.btn_open_logs.setStyleSheet("background-color: #444; border: 1px solid #555;")
-        
-        self.btn_open_saves = QPushButton("SAVE DATA")
-        self.btn_open_saves.setObjectName("btn_open_saves")
-        self.btn_open_saves.setStyleSheet("background-color: #444; border: 1px solid #555;")
-        
-        self.btn_open_mods = QPushButton("MODS FOLDER")
-        self.btn_open_mods.setObjectName("btn_open_mods")
-        self.btn_open_mods.setStyleSheet("background-color: #444; border: 1px solid #555;")
-        
-        layout.addWidget(self.btn_open_root)
-        layout.addWidget(self.btn_open_logs)
-        layout.addWidget(self.btn_open_saves)
-        layout.addWidget(self.btn_open_mods)
-        
-        layout.addStretch()
-        
-        # GLOBAL REACTOR CONTROLS (Redundant)
-        self.btn_start_server_global = QPushButton("START SERVER")
-        self.btn_start_server_global.setObjectName("btn_start_server_global")
-        self.btn_start_server_global.setStyleSheet("background-color: #2ecc71; color: black; font-weight: bold; padding: 5px 15px;")
-        
-        self.btn_shutdown_dialog_global = QPushButton("SHUTDOWN / RESTART")
-        self.btn_shutdown_dialog_global.setObjectName("btn_shutdown_dialog_global")
-        self.btn_shutdown_dialog_global.setStyleSheet("background-color: #7f8c8d; color: white; font-weight: bold; padding: 5px 15px;")
-        
-        self.btn_stop_server_global = QPushButton("STOP (IMMEDIATE)")
-        self.btn_stop_server_global.setObjectName("btn_stop_server_global")
-        self.btn_stop_server_global.setStyleSheet("background-color: #e74c3c; color: white; font-weight: bold; padding: 5px 15px;")
-        
-        layout.addWidget(self.btn_start_server_global)
-        layout.addWidget(self.btn_shutdown_dialog_global)
-        layout.addWidget(self.btn_stop_server_global)
-        
-        self.main_layout.addWidget(tactical_frame)
+        self.btn_open_root.setObjectName("tactical_btn") # CSS Hook
+        self.btn_open_root.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_open_root.setToolTip("Open Server Root Folder")
 
-    def _build_nav_bar(self):
-        """Row 3: The Tab Buttons"""
-        nav_frame = QFrame()
-        nav_frame.setObjectName("NavBar")
-        nav_frame.setFixedHeight(50)
-        layout = QHBoxLayout(nav_frame)
-        layout.setContentsMargins(15, 0, 15, 0)
-        layout.setSpacing(1) # Tight spacing like tabs
-        
-        self.nav_group = QButtonGroup(self.main_window)
-        self.nav_group.setExclusive(True)
-        
-        # Helper to create styled tab buttons
-        def create_nav_btn(text, id_num):
-            btn = QPushButton(text)
-            btn.setCheckable(True)
-            btn.setMinimumHeight(40)
-            btn.setMinimumWidth(120)
-            btn.setStyleSheet("""
-                QPushButton { background-color: #2d2d30; border: none; color: #aaa; font-weight: bold; border-bottom: 2px solid transparent; }
-                QPushButton:checked { background-color: #3e3e42; color: #fff; border-bottom: 2px solid #007acc; }
-                QPushButton:hover { background-color: #3e3e42; }
-            """)
-            self.nav_group.addButton(btn, id_num)
-            layout.addWidget(btn)
-            return btn
-            
-        self.btn_nav_dashboard = create_nav_btn("DASHBOARD", 0)
-        self.btn_nav_dashboard.setChecked(True)
-        
-        self.btn_nav_config = create_nav_btn("CONFIGURATION", 1)
-        self.btn_nav_forge = create_nav_btn("THE FORGE", 2)
-        self.btn_nav_economy = create_nav_btn("ECONOMY LEDGER", 3)
-        self.btn_nav_automation = create_nav_btn("AUTOMATION EVENTS", 4)
-        self.btn_nav_faq = create_nav_btn("KNOWLEDGE BASE", 5)
-        
-        layout.addStretch()
-        
-        # Connect Group to Stack
-        self.nav_group.idClicked.connect(self._switch_tab)
-        
-        self.main_layout.addWidget(nav_frame)
+        self.btn_open_logs = QPushButton("LOGS")
+        self.btn_open_logs.setObjectName("tactical_btn")
+        self.btn_open_logs.setCursor(Qt.CursorShape.PointingHandCursor)
 
-    def _switch_tab(self, id_num):
-        if self.content_stack:
-            self.content_stack.setCurrentIndex(id_num)
+        self.btn_save_data = QPushButton("SAVES")
+        self.btn_save_data.setObjectName("tactical_btn")
+        self.btn_save_data.setCursor(Qt.CursorShape.PointingHandCursor)
 
-    def _build_content_stack(self):
-        self.content_stack = QStackedWidget()
+        # Spacer between File Ops and Server Controls
+        self.tactical_spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        # -- RIGHT SIDE: Reactor Controls (Start/Stop) --
+        self.btn_start_server = QPushButton("START SERVER")
+        self.btn_start_server.setObjectName("btn_start_server") 
+        # Note: NexusStyler handles #btn_start_server with Green styling
+        self.btn_start_server.setMinimumWidth(120)
+        self.btn_start_server.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        self.btn_stop_server = QPushButton("STOP (KILL)")
+        self.btn_stop_server.setObjectName("btn_stop_server")
+        # Note: NexusStyler handles #btn_stop_server with Red styling
+        self.btn_stop_server.setMinimumWidth(120)
+        self.btn_stop_server.setEnabled(False) # Disabled by default
+        self.btn_stop_server.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        self.btn_shutdown_dialog = QPushButton("OPTIONS")
+        self.btn_shutdown_dialog.setObjectName("tactical_btn")
+        self.btn_shutdown_dialog.setToolTip("Graceful Shutdown / Restart Options")
+
+        # Assemble
+        self.tactical_layout.addWidget(self.btn_open_root)
+        self.tactical_layout.addWidget(self.btn_open_logs)
+        self.tactical_layout.addWidget(self.btn_save_data)
+        self.tactical_layout.addSpacerItem(self.tactical_spacer)
+        self.tactical_layout.addWidget(self.btn_start_server)
+        self.tactical_layout.addWidget(self.btn_shutdown_dialog)
+        self.tactical_layout.addWidget(self.btn_stop_server)
+
+        # Add to Main Layout
+        self.main_layout.addWidget(self.tactical_frame)
+    # endregion
+
+    # region [SECTION_3_NAVIGATION_BAR]
+    def _build_navigation_bar(self):
+        """
+        Constructs the main horizontal tab navigation.
+        """
+        self.nav_frame = QFrame(self.central_widget)
+        self.nav_frame.setObjectName("nav_frame")
+        self.nav_frame.setMinimumHeight(45)
+        self.nav_frame.setMaximumHeight(45)
+
+        self.nav_layout = QHBoxLayout(self.nav_frame)
+        self.nav_layout.setContentsMargins(0, 0, 0, 0)
+        self.nav_layout.setSpacing(2)
+
+        # Create Buttons
+        # We give them objectName "nav_btn" for generic styling, 
+        # and specific IDs for the router map.
+        
+        self.btn_nav_dashboard = QPushButton("DASHBOARD")
+        self.btn_nav_dashboard.setObjectName("nav_btn")
+        self.btn_nav_dashboard.setCheckable(True)
+        self.btn_nav_dashboard.setChecked(True) # Default active
+
+        self.btn_nav_config = QPushButton("CONFIGURATION")
+        self.btn_nav_config.setObjectName("nav_btn")
+        self.btn_nav_config.setCheckable(True)
+
+        self.btn_nav_forge = QPushButton("THE FORGE")
+        self.btn_nav_forge.setObjectName("nav_btn")
+        self.btn_nav_forge.setCheckable(True)
+
+        self.btn_nav_economy = QPushButton("ECONOMY")
+        self.btn_nav_economy.setObjectName("nav_btn")
+        self.btn_nav_economy.setCheckable(True)
+
+        self.btn_nav_automation = QPushButton("AUTOMATION")
+        self.btn_nav_automation.setObjectName("nav_btn")
+        self.btn_nav_automation.setCheckable(True)
+
+        self.btn_nav_faq = QPushButton("KNOWLEDGE BASE")
+        self.btn_nav_faq.setObjectName("nav_btn")
+        self.btn_nav_faq.setCheckable(True)
+
+        # Add to Layout
+        self.nav_layout.addWidget(self.btn_nav_dashboard)
+        self.nav_layout.addWidget(self.btn_nav_config)
+        self.nav_layout.addWidget(self.btn_nav_forge)
+        self.nav_layout.addWidget(self.btn_nav_economy)
+        self.nav_layout.addWidget(self.btn_nav_automation)
+        self.nav_layout.addWidget(self.btn_nav_faq)
+
+        # Add to Main Layout
+        self.main_layout.addWidget(self.nav_frame)
+    # endregion
+
+    # region [SECTION_4_CONTENT_STACK]
+    def _build_content_stack(self, main_window):
+        """
+        Constructs the QStackedWidget and instantiates the individual Tab Classes.
+        Uses the BUILDER PATTERN (TabBuilder.build(main_window)).
+        """
+        self.content_stack = QStackedWidget(self.central_widget)
+        self.content_stack.setObjectName("content_stack")
+
+        # Instantiate Tabs via Builders
+        
+        # Index 0: Dashboard
+        self.tab_dashboard = DashboardTabBuilder.build(main_window)
+        self.content_stack.addWidget(self.tab_dashboard)
+
+        # Index 1: Configuration
+        self.tab_config = ConfigurationTabBuilder.build(main_window)
+        self.content_stack.addWidget(self.tab_config)
+
+        # Index 2: The Forge (Mod Manager)
+        self.tab_forge = ForgeTabBuilder.build(main_window)
+        self.content_stack.addWidget(self.tab_forge)
+
+        # Index 3: Economy
+        self.tab_economy = EconomyTabBuilder.build(main_window)
+        self.content_stack.addWidget(self.tab_economy)
+
+        # Index 4: Automation
+        self.tab_automation = AutomationTabBuilder.build(main_window)
+        self.content_stack.addWidget(self.tab_automation)
+
+        # Index 5: FAQ / Help
+        self.tab_faq = FaqTabBuilder.build(main_window)
+        self.content_stack.addWidget(self.tab_faq)
+
+        # Add Stack to Main Layout
         self.main_layout.addWidget(self.content_stack)
+    # endregion
 
-    def _populate_tabs(self, main_window):
-        # DASHBOARD
-        try:
-            self.tab_dashboard = DashboardTabBuilder.build(main_window)
-            self.content_stack.addWidget(self.tab_dashboard)
-        except Exception as e:
-            self._log_crash_to_file("DASHBOARD", e)
-            self._add_fallback_tab("Dashboard Error")
-            
-        # CONFIGURATION
-        try:
-            self.tab_config = ConfigurationTabBuilder.build(main_window)
-            self.content_stack.addWidget(self.tab_config)
-        except Exception as e:
-            self._log_crash_to_file("CONFIGURATION", e)
-            self._add_fallback_tab("Configuration Error")
-            
-        # FORGE
-        try:
-            self.tab_forge = ForgeTabBuilder.build(main_window)
-            self.content_stack.addWidget(self.tab_forge)
-        except Exception as e:
-            self._log_crash_to_file("FORGE", e)
-            self._add_fallback_tab("Forge Error")
-            
-        # ECONOMY
-        try:
-            self.tab_economy = EconomyTabBuilder.build(main_window)
-            self.content_stack.addWidget(self.tab_economy)
-        except Exception as e:
-            self._log_crash_to_file("ECONOMY", e)
-            self._add_fallback_tab("Economy Error")
-            
-        # AUTOMATION
-        try:
-            self.tab_automation = AutomationTabBuilder.build(main_window)
-            self.content_stack.addWidget(self.tab_automation)
-        except Exception as e:
-            self._log_crash_to_file("AUTOMATION", e)
-            self._add_fallback_tab("Automation Error")
-            
-        # FAQ (Placeholder for now)
-        try:
-            tab_faq = QWidget()
-            layout_faq = QVBoxLayout(tab_faq)
-            lbl_faq = QLabel("Knowledgebase Under Construction")
-            lbl_faq.setAlignment(Qt.AlignCenter)
-            layout_faq.addWidget(lbl_faq)
-            self.content_stack.addWidget(tab_faq)
-        except Exception as e:
-            self._log_crash_to_file("FAQ", e)
-            self._add_fallback_tab("FAQ Error")
-
+    # region [SECTION_5_FOOTER]
     def _build_footer(self):
-        footer = QFrame()
-        footer.setFixedHeight(30)
-        footer.setStyleSheet("background-color: #222; border-top: 1px solid #333;")
-        layout = QHBoxLayout(footer)
-        layout.setContentsMargins(10, 0, 10, 0)
-        
-        self.lbl_status = QLabel("Paradoxal Logic Operational")
-        self.lbl_status.setObjectName("lbl_status")
-        self.lbl_status.setStyleSheet("color: #777; font-size: 11px;")
-        
-        layout.addWidget(self.lbl_status)
-        self.main_layout.addWidget(footer)
+        """
+        Constructs the bottom status bar.
+        """
+        self.footer_frame = QFrame(self.central_widget)
+        self.footer_frame.setObjectName("footer_frame")
+        self.footer_frame.setMinimumHeight(30)
+        self.footer_frame.setMaximumHeight(30)
+        self.footer_frame.setStyleSheet("background-color: #0F0F0F; border-top: 1px solid #333;")
 
-    def _add_fallback_tab(self, name):
-        w = QWidget()
-        l = QVBoxLayout(w)
-        lbl = QLabel(f"MODULE FAILED: {name}")
-        lbl.setStyleSheet("color: red; font-weight: bold;")
-        l.addWidget(lbl)
-        self.content_stack.addWidget(w)
+        self.footer_layout = QHBoxLayout(self.footer_frame)
+        self.footer_layout.setContentsMargins(10, 0, 10, 0)
 
-    def _log_to_file(self, message):
-        try:
-            with open("logs/startup_crash_log.txt", "a", encoding="utf-8") as f:
-                f.write(f"{datetime.datetime.now()} {message}\n")
-        except: pass
+        self.lbl_system_status = QLabel("SYSTEM READY")
+        self.lbl_system_status.setStyleSheet("color: #666; font-size: 10px;")
 
-    def _log_crash_to_file(self, name, err):
-        try:
-            with open("logs/startup_crash_log.txt", "a", encoding="utf-8") as f:
-                f.write(f"CRASH {name}: {str(err)}\n{traceback.format_exc()}\n")
-        except: pass
+        self.footer_layout.addWidget(self.lbl_system_status)
+        self.main_layout.addWidget(self.footer_frame)
+    # endregion
 
-    def _apply_global_styles(self, main_window):
-        main_window.setStyleSheet("""
-            QMainWindow { background-color: #1e1e1e; }
-            QLabel { color: #ddd; }
-            QComboBox { background-color: #333; color: #eee; border: 1px solid #444; padding: 5px; }
-            QLineEdit { background-color: #333; color: #eee; border: 1px solid #444; padding: 5px; }
-            QPushButton { border-radius: 3px; padding: 5px; }
-        """)
+    # region [LOGIC_WIRING]
+    def _connect_nav_buttons(self):
+        """
+        Internal logic to handle visual tab switching state (Exclusive checks).
+        """
+        self.nav_group = [
+            self.btn_nav_dashboard,
+            self.btn_nav_config,
+            self.btn_nav_forge,
+            self.btn_nav_economy,
+            self.btn_nav_automation,
+            self.btn_nav_faq
+        ]
+
+        # Note: Actual page switching is handled by 'main.py' Routers.
+        # This function just ensures only one button looks "Pressed" at a time.
+        for btn in self.nav_group:
+            btn.clicked.connect(self._update_nav_state)
+
+    def _update_nav_state(self):
+        sender = self.central_widget.sender()
+        if not sender: return
+
+        for btn in self.nav_group:
+            if btn == sender:
+                btn.setChecked(True)
+            else:
+                btn.setChecked(False)
+    # endregion
