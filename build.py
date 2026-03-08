@@ -1,100 +1,227 @@
-import os
-import shutil
 import PyInstaller.__main__
+import os
+import re
+import shutil
+import time
+import logging
 
-# ======================================================
-# ZERO HOUR: BUILD SYSTEM ORCHESTRATOR - v21.0
-# ======================================================
-# ROLE: PyInstaller Compilation Wrapper
-# STRATEGY: Full Vertical Source - Router Aware
-# ======================================================
-# PHASE 21 UPDATES:
-# 1. Added Hidden Imports for new 'routers' package.
-# 2. Updated Version Metadata to 21.0.
-# 3. Cleaned up asset paths for the Refactor structure.
-# ======================================================
+# =========================================================
+# ZERO HOUR: INDUSTRIAL BUILDER - v21.2
+# =========================================================
+# ROLE: Version Control & Executable Compilation
+# STRATEGY: Full Vertical Source - Router Aware - PySide6 Native
+# =========================================================
+# PHASE 21.2 FIX:
+# FIX: Adjusted Version Stamper Regex to accept 2-digit versions (e.g. v20.8).
+# FIX: Prevents "Skipped" files during update process.
+# =========================================================
 
-def clean_previous_builds():
+# --- MASTER CONFIGURATION ---
+VERSION = "21.2"
+APP_NAME = "ZeroHour_Server_Manager"
+ICON_PATH = "assets/logo.ico"
+MAIN_SCRIPT = "main.py"
+
+# Logging Setup
+logging.basicConfig(level=logging.INFO, format="<BUILD> %(message)s")
+log = logging.getLogger("Builder")
+
+# --- AUTO-STAMPER ENGINE ---
+class VersionStamper:
     """
-    Removes the 'build' and 'dist' directories to ensure a clean compilation.
+    Scans the codebase and updates the version tags in file headers.
     """
-    directories = ["build", "dist"]
-    
-    for directory in directories:
-        if os.path.exists(directory):
-            print(f">> Cleaning directory: {directory}...")
+    def __init__(self, target_version):
+        self.version = target_version
+        self.dirs_to_scan = [
+            "core", 
+            "ui", 
+            "routers", 
+            "core/workers", 
+            "ui/tabs"
+        ]
+        
+        # --- THE FIX IS HERE ---
+        # OLD REGEX: r"^(#.*-\sv)(\d+\.\d+\.\d+)(.*)$"  <-- Required 3 numbers
+        # NEW REGEX: Matches "v20.8" OR "v20.8.1"
+        self.header_pattern = re.compile(r"^(#.*-\sv)(\d+\.\d+(?:\.\d+)?)(.*)$")
+        
+        # Matches VERSION = "20.8"
+        self.var_pattern = re.compile(r'^(VERSION\s*=\s*")(\d+\.\d+(?:\.\d+)?)(".*)$')
+
+    def execute(self):
+        log.info(f"Stamping Version {self.version} across ecosystem...")
+        count = 0
+
+        for folder in self.dirs_to_scan:
+            if not os.path.exists(folder):
+                continue
+
+            for root, dirs, files in os.walk(folder):
+                for file in files:
+                    if file.endswith(".py"):
+                        full_path = os.path.join(root, file)
+                        if self.update_file(full_path):
+                            count += 1
+
+        if os.path.exists(MAIN_SCRIPT):
+            if self.update_file(MAIN_SCRIPT):
+                count += 1
+
+        log.info(f"Version Stamp Complete. {count} files updated.")
+
+    def update_file(self, file_path):
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+
+            modified = False
+            new_lines = []
+
+            for i, line in enumerate(lines):
+                if i < 20: # Check header only
+                    # Check Header Comment (# ... - v20.8)
+                    header_match = self.header_pattern.match(line)
+                    if header_match:
+                        current_ver = header_match.group(2)
+                        if current_ver != self.version:
+                            # Reconstruct line with new version
+                            new_line = f"{header_match.group(1)}{self.version}{header_match.group(3)}\n"
+                            new_lines.append(new_line)
+                            modified = True
+                            continue
+
+                    # Check VERSION variable (VERSION = "20.8")
+                    var_match = self.var_pattern.match(line)
+                    if var_match:
+                        current_ver = var_match.group(2)
+                        if current_ver != self.version:
+                            new_line = f"{var_match.group(1)}{self.version}{var_match.group(3)}\n"
+                            new_lines.append(new_line)
+                            modified = True
+                            continue
+
+                    new_lines.append(line)
+                else:
+                    new_lines.append(line)
+
+            if modified:
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.writelines(new_lines)
+                log.info(f"Updated: {os.path.basename(file_path)}")
+                return True
+            return False
+
+        except Exception as e:
+            log.warning(f"Could not stamp {file_path}: {e}")
+            return False
+
+def main():
+    print(f"\n{'='*60}")
+    print(f" ZERO HOUR BUILD SYSTEM - v{VERSION}")
+    print(f" TIMESTAMP: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"{'='*60}")
+
+    # 1. EXECUTE VERSION STAMPING
+    stamper = VersionStamper(VERSION)
+    stamper.execute()
+
+    # 2. CLEAN PROTOCOL
+    print(" <BUILD> Initiating Workspace Sanitation...")
+    dirs_to_clean = ["build", "dist"]
+    for d in dirs_to_clean:
+        if os.path.exists(d):
             try:
-                shutil.rmtree(directory)
+                shutil.rmtree(d)
+                print(f" <CLEAN> Removed: {d}/")
             except Exception as e:
-                print(f"!! Error cleaning {directory}: {e}")
+                print(f" <WARNING> Could not remove {d}: {e}")
 
-def compile_application():
-    """
-    Executes the PyInstaller process with specific arguments for the Zero Hour Suite.
-    """
-    print(">> INITIATING COMPILATION SEQUENCE v21.0...")
+    # Remove spec file
+    spec_file = f"{APP_NAME}.spec"
+    if os.path.exists(spec_file):
+        os.remove(spec_file)
 
-    # 1. Define the Application Name
-    app_name = "ZeroHour_Server_Manager"
-
-    # 2. Define the Main Entry Point
-    script_file = "main.py"
-
-    # 3. Define Data Files (Assets, UI, Configs)
-    # Format: "source_path;dest_path" (Windows uses separator ';')
-    # We include the entire 'ui' and 'assets' folders.
-    add_data = [
-        "ui;ui",
-        "assets;assets",
-        "core;core",
-        # "routers;routers", # Usually code is handled by analysis, but data is safe to add if needed
-    ]
-
-    # 4. Define Hidden Imports
-    # Crucial for Phase 21: Explicitly tell PyInstaller about the new Routers
-    # just in case they are imported dynamically or missed by the analyzer.
+    # 3. DEFINE HIDDEN IMPORTS
     hidden_imports = [
-        "PyQt6",
-        "requests",
+        # --- ROUTERS ---
         "routers.dashboard_router",
         "routers.config_router",
         "routers.forge_router",
         "routers.economy_router",
         "routers.automation_router",
+
+        # --- CORE ---
         "core.app_state",
         "core.validator",
-        "core.provisioning_engine"
+        "core.provisioning_engine",
+        "core.registry",
+        "core.settings_bridge",
+        
+        # --- UI ---
+        # Note: We must ensure __init__.py exists in 'ui' for these to be found easily
+        "ui.admin_layouts", 
+        "ui.dialogs",
+        "ui.nexus_styler",
+        "ui.faq_knowledgebase",
+        "ui.tabs.dashboard_tab",
+        "ui.tabs.configuration_tab",
+        "ui.tabs.forge_tab",
+        "ui.tabs.economy_tab",
+        "ui.tabs.automation_tab",
+        "ui.tabs.faq_tab",
+
+        # --- LIBS ---
+        "sqlite3", "logging", "json", "csv", 
+        "xml.etree.ElementTree", "zipfile", "shutil", "requests",
+
+        # --- PYSIDE6 ---
+        "PySide6.QtCore",
+        "PySide6.QtGui",
+        "PySide6.QtWidgets",
+        "PySide6.QtXml"
     ]
 
-    # 5. Construct the PyInstaller Arguments
+    # 4. ARGUMENTS
     args = [
-        script_file,
-        f"--name={app_name}",
-        "--noconfirm",          # Do not ask for confirmation to overwrite
-        "--clean",              # Clean PyInstaller cache
-        "--onefile",            # Bundle into a single EXE (Optional: remove for directory based)
-        "--windowed",           # No console window (GUI only)
-        # "--console",          # UNCOMMENT FOR DEBUGGING (Shows console output)
-        "--icon=assets/icon.ico", # Ensure you have an icon or remove this line
+        MAIN_SCRIPT,
+        f"--name={APP_NAME}",
+        "--noconfirm",
+        "--clean",
+        "--onefile",
+        "--windowed", 
+        
+        # --- FORCE PYSIDE6 ---
+        "--collect-all=PySide6",
+        "--collect-all=requests",
+        
+        # --- ASSETS ---
+        "--add-data=assets;assets",
+        "--add-data=ui;ui",
+        "--add-data=core;core"
     ]
 
-    # Append Data arguments
-    for data in add_data:
-        args.append(f"--add-data={data}")
+    if os.path.exists(ICON_PATH):
+        args.append(f"--icon={ICON_PATH}")
 
-    # Append Hidden Import arguments
-    for imp in hidden_imports:
-        args.append(f"--hidden-import={imp}")
+    for h in hidden_imports:
+        args.append(f"--hidden-import={h}")
 
-    # 6. Execute
-    print(f">> Launching PyInstaller for {app_name}...")
-    PyInstaller.__main__.run(args)
-    print(">> COMPILATION FINISHED.")
+    print(f" <BUILD> Configuration Locked.")
+    print(f" <BUILD> Modules: {len(hidden_imports)} forced imports")
+    print(f" <BUILD> Compiling... (This may take 1-2 minutes)")
+    print(f"{'-'*60}")
+
+    try:
+        PyInstaller.__main__.run(args)
+        print(f"{'='*60}")
+        print(" <SUCCESS> BUILD COMPLETE.")
+        print(f" <OUTPUT> dist/{APP_NAME}.exe")
+        print(f"{'='*60}")
+    except Exception as e:
+        print(f"\n <CRITICAL FAILURE> Build Process Failed: {str(e)}")
 
 if __name__ == "__main__":
-    clean_previous_builds()
-    compile_application()
-    
-    # Optional: Pause at the end if running from a separate terminal window
-    print(">> Build process complete. Press Enter to exit.")
+    main()
+    print("Press Enter to exit.")
     input()

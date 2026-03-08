@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: SETTINGS BRIDGE - v20.8
+# ZERO HOUR CORE: SETTINGS BRIDGE - v21.2
 # =========================================================
 # ROLE: Translator between UI Widgets, Registry, and XML
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

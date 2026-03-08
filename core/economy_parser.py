@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: ECONOMY PARSER - v20.8
+# ZERO HOUR CORE: ECONOMY PARSER - v21.2
 # =========================================================
 # ROLE: Mathematical Engine & Commerce Transactions
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

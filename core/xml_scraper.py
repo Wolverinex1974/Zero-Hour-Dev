@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: MOD XML SCRAPER - v20.8
+# ZERO HOUR CORE: MOD XML SCRAPER - v21.2
 # =========================================================
 # ROLE: Metadata Extraction from ModInfo.xml (V1 & V2)
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

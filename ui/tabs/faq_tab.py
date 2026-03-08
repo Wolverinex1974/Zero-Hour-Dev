@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR UI: FAQ TAB WRAPPER - v20.8
+# ZERO HOUR UI: FAQ TAB WRAPPER - v21.2
 # =========================================================
 # ROLE: Adapts the legacy KnowledgeBaseUI into the new
 #       Phase 20 Builder Architecture.

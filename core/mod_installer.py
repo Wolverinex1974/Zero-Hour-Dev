@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: MOD INSTALLER - v20.8
+# ZERO HOUR CORE: MOD INSTALLER - v21.2
 # =========================================================
 # ROLE: Smart Extraction & Mod Verification Engine
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

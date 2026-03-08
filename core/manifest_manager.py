@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: MANIFEST MANAGER - v20.8
+# ZERO HOUR CORE: MANIFEST MANAGER - v21.2
 # =========================================================
 # ROLE: Cloud Carrier Logic for the Manifest Vault
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

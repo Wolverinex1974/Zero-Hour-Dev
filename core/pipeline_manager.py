@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: PIPELINE MANAGER - v20.8
+# ZERO HOUR CORE: PIPELINE MANAGER - v21.2
 # =========================================================
 # ROLE: Cloud Synchronization Orchestrator (Smart Uplink)
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

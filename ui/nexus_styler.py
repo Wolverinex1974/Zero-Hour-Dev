@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR UI: NEXUS STYLER - v20.8 (PHASE 13)
+# ZERO HOUR UI: NEXUS STYLER - v21.2 (PHASE 13)
 # =========================================================
 # ROLE: Centralized Visual Logic & Tactile Feedback
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: GARBAGE COLLECTOR WORKER - v20.8
+# ZERO HOUR CORE: GARBAGE COLLECTOR WORKER - v21.2
 # =========================================================
 # ROLE: Asynchronous Cloud Cleanup
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

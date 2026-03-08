@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: DIGITAL FINGERPRINTING ENGINE - v20.8
+# ZERO HOUR CORE: DIGITAL FINGERPRINTING ENGINE - v21.2
 # =========================================================
 # ROLE: Deterministic SHA-256 Mod Hashing
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR UI: KNOWLEDGE BASE - v20.8
+# ZERO HOUR UI: KNOWLEDGE BASE - v21.2
 # =========================================================
 # ROLE: Embedded Documentation & Help Center
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

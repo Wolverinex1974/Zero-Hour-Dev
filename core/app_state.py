@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: APP STATE - v20.8
+# ZERO HOUR CORE: APP STATE - v21.2
 # =========================================================
 # ROLE: Global Context Manager (Singleton Pattern)
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

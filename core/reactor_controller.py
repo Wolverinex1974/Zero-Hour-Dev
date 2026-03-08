@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: REACTOR CONTROLLER - v20.8
+# ZERO HOUR CORE: REACTOR CONTROLLER - v21.2
 # =========================================================
 # ROLE: Server Lifecycle Orchestration & Bi-Directional Data
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand
