@@ -1,8 +1,12 @@
 # ==============================================================================
-# ZERO HOUR CORE: LOGGER - v24.0 (BLACK BOX FLIGHT RECORDER)
+# ZERO HOUR CORE: LOGGER - v23.2 (BLACK BOX FLIGHT RECORDER)
 # ==============================================================================
-# ROLE: Intercepts all stdout/stderr and UI logs, writing them to a physical file.
+# ROLE: A reliable file-writer that catches fatal application crashes.
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand - Bracket Free
+# ==============================================================================
+# PHASE 24 UPDATE:
+# FIX: Removed the aggressive StreamInterceptor that was suffocating PyInstaller
+#      and causing silent instant-crashes. Reverted to a pure sys.excepthook.
 # ==============================================================================
 
 import os
@@ -13,7 +17,7 @@ import traceback
 class BlackBoxLogger:
     """
     A persistent file logger that acts as a Flight Recorder for the application.
-    It catches all print statements, system errors, and router log events.
+    It catches system errors and manual router log events.
     """
     def __init__(self):
         self.log_directory = os.path.join(os.getcwd(), "logs")
@@ -26,8 +30,7 @@ class BlackBoxLogger:
         timestamp_string = datetime.datetime.now().strftime("%Y-%m-%d")
         self.log_file_path = os.path.join(self.log_directory, f"zerohour_sys_{timestamp_string}.log")
         
-        self.original_stdout = sys.stdout
-        self.original_stderr = sys.stderr
+        self.original_excepthook = sys.excepthook
 
     def write_to_file(self, message_text, level="INFO"):
         """
@@ -47,43 +50,24 @@ class BlackBoxLogger:
 
     def hook_system_streams(self):
         """
-        Reroutes all standard print() and error outputs into the physical file.
+        Reroutes ONLY unhandled fatal crashes into the physical file.
+        Leaves standard stdout/stderr completely untouched so the console works.
         """
-        sys.stdout = StreamInterceptor(self, "STDOUT", self.original_stdout)
-        sys.stderr = StreamInterceptor(self, "STDERR", self.original_stderr)
         sys.excepthook = self.handle_uncaught_exception
 
     def handle_uncaught_exception(self, exception_type, exception_value, exception_traceback):
         """
-        Catches fatal thread crashes before the application dies silently.
+        Catches fatal thread crashes right before the application dies.
         """
         traceback_details = "".join(traceback.format_exception(exception_type, exception_value, exception_traceback))
         error_message = f"FATAL CRASH DETECTED:\n{traceback_details}"
+        
+        # 1. Write the crash to our logs/zerohour_sys.log file
         self.write_to_file(error_message, "CRITICAL")
         
-        if self.original_stderr:
-            self.original_stderr.write(error_message)
+        # 2. Let the original system error handler print it to the console
+        self.original_excepthook(exception_type, exception_value, exception_traceback)
 
-
-class StreamInterceptor:
-    """
-    A helper class to intercept sys.stdout and sys.stderr.
-    It writes to the BlackBox file and then passes it along to the original console.
-    """
-    def __init__(self, logger_instance, stream_name, original_stream):
-        self.logger_instance = logger_instance
-        self.stream_name = stream_name
-        self.original_stream = original_stream
-
-    def write(self, message_data):
-        if message_data and not message_data.isspace():
-            self.logger_instance.write_to_file(message_data, self.stream_name)
-        if self.original_stream:
-            self.original_stream.write(message_data)
-
-    def flush(self):
-        if self.original_stream:
-            self.original_stream.flush()
 
 # Instantiate a global singleton instance
 flight_recorder = BlackBoxLogger()

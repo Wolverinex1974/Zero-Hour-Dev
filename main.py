@@ -1,8 +1,12 @@
 # ==============================================================================
-# ZERO HOUR SERVER MANAGER: BOOTSTRAPPER - v24.1 (BLACK BOX EDITION)
+# ZERO HOUR SERVER MANAGER: BOOTSTRAPPER - v23.2 (BLACK BOX EDITION)
 # ==============================================================================
 # ROLE: Entry point, UI Initializer, Router Coordinator, and Global Logger.
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand - Bracket Free
+# ==============================================================================
+# PHASE 24 UPDATE:
+# FIX: Reverted UI initialization to correctly instantiate ZeroHourLayout and 
+#      call setup_ui() as dictated by ui/admin_layouts.py.
 # ==============================================================================
 
 import sys
@@ -12,10 +16,10 @@ import datetime
 from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 from PySide6.QtCore import Qt, QTimer
 
-# region [CORE_IMPORTS]
+# region[CORE_IMPORTS]
 from core.app_state import state
 from core.logger import flight_recorder
-from ui.admin_layouts import AdminLayoutBuilder
+from ui.admin_layouts import ZeroHourLayout
 from ui.nexus_styler import NexusStyler
 # endregion
 
@@ -42,17 +46,24 @@ class ZeroHourManager(QMainWindow):
         flight_recorder.write_to_file("========================================", "BOOT")
 
         # 2. Setup the Main Window properties
-        self.setWindowTitle("Zero Hour Ecosystem | Paradoxal Suite v24.1")
+        self.setWindowTitle("Zero Hour Ecosystem | Paradoxal Suite v24.3")
         self.setMinimumSize(1200, 800)
         
-        # 3. Build the UI using the Builder Pattern
-        self.ui = AdminLayoutBuilder.build(self)
-        self.setCentralWidget(self.ui.central_widget)
+        # 3. Build the UI using the verified ZeroHourLayout class
+        try:
+            self.ui = ZeroHourLayout()
+            self.ui.setup_ui(self)
+            self.ui.ui = self
+            flight_recorder.write_to_file("ZeroHourLayout initialized successfully.", "INFO")
+        except Exception as layout_error:
+            flight_recorder.write_to_file(f"Failed to build UI layout: {str(layout_error)}", "CRITICAL")
+            QMessageBox.critical(self, "Boot Failure", f"Failed to build UI layout.\n\n{str(layout_error)}")
+            return
         
         # 4. Apply the Global CSS Theme
         try:
             styler_engine = NexusStyler()
-            self.setStyleSheet(styler_engine.get_stylesheet())
+            self.setStyleSheet(styler_engine.get_industrial_style())
             flight_recorder.write_to_file("NexusStyler Theme applied successfully.", "INFO")
         except Exception as theme_error:
             flight_recorder.write_to_file(f"Failed to apply NexusStyler: {str(theme_error)}", "ERROR")
@@ -85,7 +96,8 @@ class ZeroHourManager(QMainWindow):
             flight_recorder.write_to_file("AutomationRouter initialized.", "INFO")
             
             # Wire cross-router communication
-            self.dashboard_router.server_status_changed.connect(self.automation_router.handle_server_status_change)
+            #Disabled for now
+            #self.dashboard_router.server_status_changed.connect(self.automation_router.handle_server_status_change)
             
         except Exception as router_error:
             flight_recorder.write_to_file(f"Critical error during router initialization: {str(router_error)}", "CRITICAL")

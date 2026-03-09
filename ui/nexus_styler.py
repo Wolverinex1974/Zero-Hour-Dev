@@ -1,240 +1,182 @@
 # ==============================================================================
-# ZERO HOUR UI: NEXUS STYLER - v23.2
+# ZERO HOUR UI: NEXUS STYLER (CSS ENGINE) - v23.2
 # ==============================================================================
-# ROLE: The "Paint". Centralized CSS Stylesheet Manager.
-# STRATEGY: Full Vertical Source - No Semicolons - No Shorthand
+# ROLE: The central repository for all Global CSS rules (Industrial Dark Theme).
+# STRATEGY: Full Vertical Source - No Semicolons - No Shorthand - Bracket Free
 # ==============================================================================
-# PHASE 23 UPDATE (VISUAL REPAIR):
-# FIX: Added 'QPushButton:checked' state for Navigation Tabs (Blue Highlight).
-# FIX: Hardcoded Green/Red styles for Start/Stop buttons via ID selectors.
-# FIX: Refined Scrollbar and GroupBox styling for high contrast.
+# PHASE 24 UPDATE:
+# FIX: Restored @staticmethod get_industrial_style() to satisfy ZeroHourLayout.
+# FIX: Maintained the solid blue background highlight for :checked navigation tabs.
 # ==============================================================================
 
 class NexusStyler:
     """
-    Static class that returns the master QSS (Qt Style Sheet) string.
-    This defines the "Zero Hour Industrial" theme.
+    A unified stylesheet engine that applies the 'Industrial Dark' theme
+    to the entire Zero Hour Server Manager application.
     """
-
     @staticmethod
     def get_industrial_style():
-        return """
-        /* -----------------------------------------------------------------
-           GLOBAL WINDOW SETTINGS
-           ----------------------------------------------------------------- */
-        QMainWindow, QWidget#central_widget {
-            background-color: #121212;
-            color: #E0E0E0;
-            font-family: 'Segoe UI', 'Roboto', sans-serif;
-        }
-
-        /* -----------------------------------------------------------------
-           GLOBAL TEXT ELEMENTS
-           ----------------------------------------------------------------- */
-        QLabel {
-            color: #E0E0E0;
-            font-size: 12px;
-        }
-        
-        QLabel#lbl_app_title {
-            color: #FFFFFF;
-            font-size: 18px;
-            font-weight: bold;
-            letter-spacing: 2px;
-        }
-
-        QLabel#lbl_active_profile {
-            color: #00A8E8;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        /* -----------------------------------------------------------------
-           NAVIGATION BAR (The Tabs)
-           ----------------------------------------------------------------- */
-        QFrame#nav_frame {
-            background-color: #1A1A1A;
-            border-bottom: 2px solid #333;
-        }
-
-        /* Default Tab State */
-        QPushButton#nav_btn {
-            background-color: transparent;
-            color: #888;
-            border: none;
-            border-right: 1px solid #333;
-            font-weight: bold;
-            text-transform: uppercase;
-            padding: 10px;
-            margin: 0px;
-            border-radius: 0px;
-        }
-
-        QPushButton#nav_btn:hover {
-            background-color: #252525;
-            color: #FFF;
-        }
-
-        /* Active Tab State (THE GHOST TAB FIX) */
-        QPushButton#nav_btn:checked {
-            background-color: #007ACC; /* Vivid Blue */
-            color: #FFFFFF;
-            border-bottom: 2px solid #FFFFFF;
-        }
-
-        /* -----------------------------------------------------------------
-           TACTICAL TOOLBAR (Header Buttons)
-           ----------------------------------------------------------------- */
-        QFrame#tactical_frame {
-            background-color: #0F0F0F;
-            border-bottom: 1px solid #333;
-        }
-
-        QPushButton#tactical_btn {
-            background-color: #222;
-            color: #DDD;
-            border: 1px solid #444;
-            border-radius: 3px;
-            padding: 5px 15px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-
-        QPushButton#tactical_btn:hover {
-            background-color: #333;
-            border: 1px solid #666;
-        }
-
-        /* -----------------------------------------------------------------
-           REACTOR CONTROL (Traffic Lights)
-           ----------------------------------------------------------------- */
-        /* Start Server - Green */
-        QPushButton#btn_start_server {
-            background-color: #27ae60;
-            color: white;
-            font-weight: bold;
-            border: 1px solid #219150;
-            border-radius: 3px;
-        }
-        QPushButton#btn_start_server:hover {
-            background-color: #2ecc71;
-        }
-        QPushButton#btn_start_server:disabled {
-            background-color: #145a32;
-            color: #555;
-        }
-
-        /* Stop Server - Red */
-        QPushButton#btn_stop_server {
-            background-color: #c0392b;
-            color: white;
-            font-weight: bold;
-            border: 1px solid #a93226;
-            border-radius: 3px;
-        }
-        QPushButton#btn_stop_server:hover {
-            background-color: #e74c3c;
-        }
-        QPushButton#btn_stop_server:disabled {
-            background-color: #641e16;
-            color: #555;
-        }
-
-        /* Options / Shutdown - Grey */
-        QPushButton#btn_shutdown_dialog {
-            background-color: #7f8c8d;
-            color: white;
-            font-weight: bold;
-            border: 1px solid #626e6e;
-            border-radius: 3px;
-        }
-        QPushButton#btn_shutdown_dialog:hover {
-            background-color: #95a5a6;
-        }
-
-        /* -----------------------------------------------------------------
-           INPUT FIELDS & COMBO BOXES
-           ----------------------------------------------------------------- */
-        QLineEdit, QComboBox, QSpinBox {
-            background-color: #000000;
-            border: 1px solid #444;
-            color: #00FFCC; /* Cyberpunk Text */
-            padding: 5px;
-            selection-background-color: #007ACC;
-        }
-
-        QLineEdit:focus, QComboBox:focus {
-            border: 1px solid #007ACC;
-        }
-
-        QComboBox::drop-down {
-            subcontrol-origin: padding;
-            subcontrol-position: top right;
-            width: 20px;
-            border-left-width: 1px;
-            border-left-color: #444;
-            border-left-style: solid;
-        }
-
-        /* -----------------------------------------------------------------
-           SCROLL BARS (Thin Industrial)
-           ----------------------------------------------------------------- */
-        QScrollBar:vertical {
-            border: none;
-            background: #111;
-            width: 10px;
-            margin: 0px 0px 0px 0px;
-        }
-        QScrollBar::handle:vertical {
-            background: #444;
-            min-height: 20px;
-            border-radius: 5px;
-        }
-        QScrollBar::handle:vertical:hover {
-            background: #666;
-        }
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-            height: 0px;
-        }
-
-        /* -----------------------------------------------------------------
-           TABLES & LISTS
-           ----------------------------------------------------------------- */
-        QTableWidget, QListWidget, QTextEdit {
-            background-color: #0D0D0D;
-            border: 1px solid #333;
-            color: #CCC;
-            gridline-color: #333;
-        }
-        
-        QHeaderView::section {
-            background-color: #222;
-            color: #FFF;
-            padding: 5px;
-            border: 1px solid #333;
-            font-weight: bold;
-        }
-
-        QTableWidget::item:selected, QListWidget::item:selected {
-            background-color: #004466;
-            color: white;
-        }
-
-        /* -----------------------------------------------------------------
-           GROUP BOXES
-           ----------------------------------------------------------------- */
-        QGroupBox {
-            border: 1px solid #333;
-            margin-top: 10px;
-            padding-top: 15px;
-            font-weight: bold;
-            color: #00A8E8;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            subcontrol-position: top left;
-            left: 10px;
-            padding: 0 5px;
-            background-color: #121212; /* Matches window bg to look transparent */
-        }
         """
+        Returns the fully compiled string of global CSS rules.
+        """
+        color_palette = dict()
+        color_palette["background_base"] = "#1e1e1e"
+        color_palette["background_alt"] = "#252526"
+        color_palette["border_dark"] = "#333333"
+        color_palette["text_light"] = "#e0e0e0"
+        color_palette["text_muted"] = "#888888"
+        color_palette["accent_blue"] = "#0078d7"
+        color_palette["accent_blue_hover"] = "#005a9e"
+        color_palette["accent_green"] = "#2ecc71"
+        color_palette["accent_red"] = "#e74c3c"
+        color_palette["accent_orange"] = "#e67e22"
+        color_palette["accent_purple"] = "#9932CC"
+
+        stylesheet_string = f"""
+            /* Global Application Rules */
+            QMainWindow {{
+                background-color: {color_palette["background_base"]};
+                color: {color_palette["text_light"]};
+            }}
+
+            QWidget {{
+                color: {color_palette["text_light"]};
+            }}
+
+            /* Top Level Navigation Tabs (Dashboard, Configuration, Forge, etc.) */
+            QPushButton#main_nav_button {{
+                background-color: transparent;
+                color: {color_palette["text_muted"]};
+                border: none;
+                border-bottom: 3px solid transparent;
+                padding: 15px;
+                font-weight: bold;
+                font-size: 13px;
+                text-transform: uppercase;
+            }}
+
+            QPushButton#main_nav_button:hover {{
+                background-color: {color_palette["border_dark"]};
+                color: {color_palette["text_light"]};
+            }}
+
+            QPushButton#main_nav_button:checked {{
+                background-color: {color_palette["accent_blue"]};
+                color: #ffffff;
+                border-bottom: 3px solid #004c8c;
+            }}
+
+            /* Standard Inputs */
+            QLineEdit, QSpinBox, QComboBox {{
+                background-color: #000000;
+                color: #00ffcc;
+                border: 1px solid {color_palette["border_dark"]};
+                padding: 5px;
+            }}
+
+            /* Standard Output / Log Windows */
+            QTextEdit {{
+                background-color: #000000;
+                color: {color_palette["text_light"]};
+                border: 1px solid {color_palette["border_dark"]};
+                font-family: Consolas, monospace;
+                padding: 5px;
+            }}
+
+            /* Standard Push Buttons */
+            QPushButton {{
+                background-color: {color_palette["border_dark"]};
+                color: {color_palette["text_light"]};
+                border: 1px solid #444444;
+                padding: 8px 15px;
+                font-weight: bold;
+            }}
+
+            QPushButton:hover {{
+                background-color: #444444;
+                border: 1px solid #555555;
+            }}
+
+            QPushButton:pressed {{
+                background-color: #222222;
+            }}
+            
+            QPushButton:disabled {{
+                background-color: #222222;
+                color: {color_palette["text_muted"]};
+                border: 1px solid {color_palette["border_dark"]};
+            }}
+
+            /* Main Header Title Label */
+            QLabel#header_title {{
+                color: #ffffff;
+                font-size: 20px;
+                font-weight: bold;
+                letter-spacing: 1px;
+            }}
+            
+            QLabel#header_subtitle {{
+                color: {color_palette["text_muted"]};
+                font-size: 14px;
+            }}
+
+            /* Scrollbars */
+            QScrollBar:vertical {{
+                border: none;
+                background: {color_palette["background_base"]};
+                width: 14px;
+                margin: 0px 0px 0px 0px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: #555555;
+                min-height: 20px;
+                border-radius: 7px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: #777777;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                border: none;
+                background: none;
+            }}
+            
+            QScrollBar:horizontal {{
+                border: none;
+                background: {color_palette["background_base"]};
+                height: 14px;
+                margin: 0px 0px 0px 0px;
+            }}
+            QScrollBar::handle:horizontal {{
+                background: #555555;
+                min-width: 20px;
+                border-radius: 7px;
+            }}
+            QScrollBar::handle:horizontal:hover {{
+                background: #777777;
+            }}
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+                border: none;
+                background: none;
+            }}
+
+            /* Specific Action Colors (Can be applied via setProperty or ID if needed) */
+            QPushButton#btn_action_start {{
+                background-color: {color_palette["accent_green"]};
+                color: #000000;
+                border: none;
+            }}
+            QPushButton#btn_action_start:hover {{
+                background-color: #27ae60;
+            }}
+            
+            QPushButton#btn_action_stop {{
+                background-color: {color_palette["accent_red"]};
+                color: #ffffff;
+                border: none;
+            }}
+            QPushButton#btn_action_stop:hover {{
+                background-color: #c0392b;
+            }}
+        """
+        
+        return stylesheet_string

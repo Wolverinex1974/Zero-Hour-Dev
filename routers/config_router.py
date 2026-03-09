@@ -4,11 +4,9 @@
 # ROLE: Controller for Server Identity, Provisioning, and XML Settings.
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand - Bracket Free
 # ==============================================================================
-# PHASE 23 UPDATE (MISSING LINKS):
-# FIX: Wired 'btn_test_cloud' to check/prompt for github_secrets.json and 
-#      validate the token via GitHubEngine.verify_token().
-# FIX: Wired 'btn_test_ports' to perform a local socket bind test to 
-#      verify if the Game Port is free.
+# PHASE 24 UPDATE:
+# FIX: Corrected SettingsBridge instantiation to only pass 'main_window', 
+#      resolving the 3-argument crash caught by the Flight Recorder.
 # ==============================================================================
 
 import os
@@ -24,7 +22,7 @@ import socket
 from PySide6.QtCore import QObject, QTimer, QThread, Signal
 from PySide6.QtWidgets import QMessageBox, QFileDialog, QLineEdit, QInputDialog
 
-# region [IMPORTS_CORE]
+# region[IMPORTS_CORE]
 from core.app_state import state
 from core.github_engine import GitHubEngine
 try:
@@ -140,21 +138,22 @@ class ConfigRouter(QObject):
     def __init__(self, main_window, ui_reference):
         super().__init__()
         self.main_window = main_window
-        self.ui = ui_reference
+        self.ui = self.main_window
         
         self.settings_bridge = None
         if SettingsBridge:
-            self.settings_bridge = SettingsBridge(self.main_window, self.ui)
+            # FIXED: SettingsBridge only accepts main_window
+            self.settings_bridge = SettingsBridge(self.main_window)
 
         self._connect_signals()
         self._load_initial_data()
 
     def _connect_signals(self):
         self.ui.btn_save_identity.clicked.connect(self.save_identity_data)
-        self.ui.btn_install_steamcmd.clicked.connect(self.install_steamcmd_tool)
-        self.ui.btn_deploy_server.clicked.connect(self.path_provision_new)
-        self.ui.btn_browse_server.clicked.connect(self.path_adopt_existing)
-        self.ui.btn_save_xml.clicked.connect(self.commit_xml_settings)
+        self.ui.btn_init_tool.clicked.connect(self.install_steamcmd_tool)
+        self.ui.btn_deploy_fresh.clicked.connect(self.path_provision_new)
+        self.ui.btn_browse_adopt.clicked.connect(self.path_adopt_existing)
+        self.ui.btn_save_srv_settings.clicked.connect(self.commit_xml_settings)
         
         self.ui.btn_test_cloud.clicked.connect(self.test_cloud_connection)
         self.ui.btn_test_ports.clicked.connect(self.test_server_port)
@@ -221,8 +220,8 @@ class ConfigRouter(QObject):
 
     def install_steamcmd_tool(self):
         target_directory = os.path.join(os.getcwd(), "tools", "steamcmd")
-        self.ui.btn_install_steamcmd.setEnabled(False)
-        self.ui.btn_install_steamcmd.setText("DOWNLOADING...")
+        self.ui.btn_init_tool.setEnabled(False)
+        self.ui.btn_init_tool.setText("DOWNLOADING...")
 
         self.steamcmd_worker = SteamCMDWorker(target_directory)
         self.steamcmd_worker.progress.connect(self._log_provisioning_progress)
@@ -236,12 +235,12 @@ class ConfigRouter(QObject):
             print(message)
 
     def _on_steamcmd_finished(self, success, message):
-        self.ui.btn_install_steamcmd.setEnabled(True)
+        self.ui.btn_init_tool.setEnabled(True)
         if success:
-            self.ui.btn_install_steamcmd.setText("STEAMCMD READY")
+            self.ui.btn_init_tool.setText("STEAMCMD READY")
             QMessageBox.information(self.main_window, "SteamCMD", message)
         else:
-            self.ui.btn_install_steamcmd.setText("INSTALL TOOL")
+            self.ui.btn_init_tool.setText("STEP A: INITIALIZE STEAMCMD TOOL")
             QMessageBox.critical(self.main_window, "SteamCMD Error", message)
 
     def path_provision_new(self):
@@ -259,8 +258,8 @@ class ConfigRouter(QObject):
             if confirmation == QMessageBox.No:
                 return
 
-        self.ui.btn_deploy_server.setEnabled(False)
-        self.ui.btn_deploy_server.setText("DEPLOYING...")
+        self.ui.btn_deploy_fresh.setEnabled(False)
+        self.ui.btn_deploy_fresh.setText("DEPLOYING...")
         
         self.deploy_worker = ServerDeployWorker(steamcmd_executable, target_folder)
         self.deploy_worker.progress.connect(self._log_provisioning_progress)
@@ -268,8 +267,8 @@ class ConfigRouter(QObject):
         self.deploy_worker.start()
 
     def _on_deploy_finished(self, success, message, target_folder):
-        self.ui.btn_deploy_server.setEnabled(True)
-        self.ui.btn_deploy_server.setText("DEPLOY FRESH")
+        self.ui.btn_deploy_fresh.setEnabled(True)
+        self.ui.btn_deploy_fresh.setText("STEP B: DOWNLOAD 12GB SERVER FILES")
         
         if success:
             state.set_server_path(target_folder)
@@ -308,13 +307,13 @@ class ConfigRouter(QObject):
             QMessageBox.critical(self.main_window, "Bridge Error", "SettingsBridge is not initialized.")
             return
 
-        self.ui.btn_save_xml.setEnabled(False)
-        self.ui.btn_save_xml.setText("SAVING...")
+        self.ui.btn_save_srv_settings.setEnabled(False)
+        self.ui.btn_save_srv_settings.setText("SAVING...")
 
         success = self.settings_bridge.save_ui_to_xml(server_path)
         
-        self.ui.btn_save_xml.setEnabled(True)
-        self.ui.btn_save_xml.setText("COMMIT SETTINGS TO XML")
+        self.ui.btn_save_srv_settings.setEnabled(True)
+        self.ui.btn_save_srv_settings.setText("COMMIT SETTINGS TO XML")
 
         if success:
             if hasattr(self.main_window, "log_event"):

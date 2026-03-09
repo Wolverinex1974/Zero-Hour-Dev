@@ -189,7 +189,7 @@ def main():
         "--noconfirm",
         "--clean",
         "--onefile",
-        "--windowed", 
+        "--console", 
         
         # --- FORCE PYSIDE6 ---
         "--collect-all=PySide6",
