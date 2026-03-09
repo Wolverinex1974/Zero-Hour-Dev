@@ -1,5 +1,5 @@
 # ==============================================================================
-# ZERO HOUR UI: CONFIGURATION TAB - v23.0
+# ZERO HOUR UI: CONFIGURATION TAB - v23.2
 # ==============================================================================
 # ROLE: The Setup Wizard & XML Editor.
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

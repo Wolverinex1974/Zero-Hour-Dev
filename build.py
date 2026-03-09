@@ -17,7 +17,7 @@ import logging
 # =========================================================
 
 # --- MASTER CONFIGURATION ---
-VERSION = "23.0"
+VERSION = "23.2"
 APP_NAME = "ZeroHour_Server_Manager"
 ICON_PATH = "assets/logo.ico"
 MAIN_SCRIPT = "main.py"

@@ -1,5 +1,5 @@
 ﻿# ==============================================================================
-# ZERO HOUR UI: FAQ TAB - v23.0
+# ZERO HOUR UI: FAQ TAB - v23.2
 # ==============================================================================
 # ROLE: Wrapper for the Knowledge Base Module.
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

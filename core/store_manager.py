@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: STORE MANAGER - v23.0
+# ZERO HOUR CORE: STORE MANAGER - v23.2
 # =========================================================
 # ROLE: Sovereign Storefront Controller & Item Scanner
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

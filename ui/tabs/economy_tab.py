@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR UI: ECONOMY TAB - v23.0
+# ZERO HOUR UI: ECONOMY TAB - v23.2
 # =========================================================
 # ROLE: Manages Server Currency (Z-Bucks), Shops, and
 #       Player Statistics (The Ledger).

@@ -1,5 +1,5 @@
 # ==============================================================================
-# ZERO HOUR UI: NEXUS STYLER - v23.0
+# ZERO HOUR UI: NEXUS STYLER - v23.2
 # ==============================================================================
 # ROLE: The "Paint". Centralized CSS Stylesheet Manager.
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

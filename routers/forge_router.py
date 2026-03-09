@@ -1,5 +1,5 @@
 # ==============================================================================
-# ZERO HOUR ROUTER: FORGE (MOD MANAGER) - v23.0
+# ZERO HOUR ROUTER: FORGE (MOD MANAGER) - v23.2
 # ==============================================================================
 # ROLE: Controller for Mod Management (The Forge).
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

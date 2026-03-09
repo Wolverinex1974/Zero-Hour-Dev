@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QMessageBox
 # region [METADATA]
 # FILE: routers/automation_router.py
 # DESC: Controller for Automation
-# AUTH: Phase 21 Refactor - v23.0
+# AUTH: Phase 21 Refactor - v23.2
 # endregion
 
 class BackupWorker(QThread):

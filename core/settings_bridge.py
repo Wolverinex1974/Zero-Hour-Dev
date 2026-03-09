@@ -1,5 +1,5 @@
 # ==============================================================================
-# ZERO HOUR CORE: SETTINGS BRIDGE - v23.0
+# ZERO HOUR CORE: SETTINGS BRIDGE - v23.2
 # ==============================================================================
 # ROLE: The Translator. Bridges the GUI Widgets to the serverconfig.xml file.
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

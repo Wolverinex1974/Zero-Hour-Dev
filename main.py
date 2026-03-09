@@ -1,20 +1,25 @@
+# ==============================================================================
+# ZERO HOUR SERVER MANAGER: BOOTSTRAPPER - v24.1 (BLACK BOX EDITION)
+# ==============================================================================
+# ROLE: Entry point, UI Initializer, Router Coordinator, and Global Logger.
+# STRATEGY: Full Vertical Source - No Semicolons - No Shorthand - Bracket Free
+# ==============================================================================
+
 import sys
 import os
-import logging
+import platform
+import datetime
 from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon
 
-# region [IMPORTS_UI]
-# Using the corrected Layout Engine
-from ui.admin_layouts import ZeroHourLayout
-# endregion
-
-# region [IMPORTS_CORE]
+# region [CORE_IMPORTS]
 from core.app_state import state
+from core.logger import flight_recorder
+from ui.admin_layouts import AdminLayoutBuilder
+from ui.nexus_styler import NexusStyler
 # endregion
 
-# region [IMPORTS_ROUTERS]
+# region[ROUTER_IMPORTS]
 from routers.dashboard_router import DashboardRouter
 from routers.config_router import ConfigRouter
 from routers.forge_router import ForgeRouter
@@ -22,200 +27,142 @@ from routers.economy_router import EconomyRouter
 from routers.automation_router import AutomationRouter
 # endregion
 
-# ==============================================================================
-# ZERO HOUR: MAIN BOOTSTRAPPER - v21.4
-# ==============================================================================
-# ROLE: Application Entry Point & Central Nervous System.
-# RESPONSIBILITY: Initializes UI, loads Routers, and wires the "Watchdog" logic.
-# ENGINE: PySide6 (Native)
-# ==============================================================================
-
 class ZeroHourManager(QMainWindow):
+    """
+    The main application window. It builds the UI shell and initializes all 5 
+    sub-controllers (Routers) to handle specific business logic.
+    """
     def __init__(self):
         super().__init__()
         
-        # 1. Setup Logging & State
-        self._init_system_state()
-        
-        # 2. Load UI (Using ZeroHourLayout Engine)
-        self.ui = ZeroHourLayout()
-        self.ui.setup_ui(self)
-        
-        # 3. Apply Compatibility Aliases
-        # (Bridges the gap between Layout names and Router expectations)
-        self.ui.dashboard_tab = getattr(self.ui, 'tab_dashboard', None)
-        self.ui.configuration_tab = getattr(self.ui, 'tab_config', None)
-        self.ui.forge_tab = getattr(self.ui, 'tab_forge', None)
-        self.ui.economy_tab = getattr(self.ui, 'tab_economy', None)
-        self.ui.automation_tab = getattr(self.ui, 'tab_automation', None)
-        
-        # 4. Window Configuration
-        self.setWindowTitle("Zero Hour Ecosystem | Paradoxal Suite v21.4")
-        if os.path.exists("assets/logo.ico"):
-            self.setWindowIcon(QIcon("assets/logo.ico"))
-        
-        # 5. Initialize Routers (The Logic Injection)
-        self._init_routers()
-        
-        # 6. Wire Subsystems (Watchdog & Nav)
-        self._setup_navigation()
-        self._wire_watchdog_system()
-        
-        # 7. Final Boot
-        self.log_system_event("SYSTEM: Phase 21 Refactor Complete. Watchdog Active.")
+        # 1. Initialize the Black Box Flight Recorder immediately.
+        flight_recorder.hook_system_streams()
+        flight_recorder.write_to_file("========================================", "BOOT")
+        flight_recorder.write_to_file("ZERO HOUR MANAGER INITIALIZATION STARTED", "BOOT")
+        flight_recorder.write_to_file("========================================", "BOOT")
 
-    # region [SYSTEM_INIT]
-    def _init_system_state(self):
-        """
-        Initialize the global application state and paths.
-        """
-        state.base_directory = os.getcwd()
-        os.makedirs("logs", exist_ok=True)
-        os.makedirs("backups", exist_ok=True)
+        # 2. Setup the Main Window properties
+        self.setWindowTitle("Zero Hour Ecosystem | Paradoxal Suite v24.1")
+        self.setMinimumSize(1200, 800)
         
-        logging.basicConfig(
-            filename='logs/manager.log',
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s'
-        )
+        # 3. Build the UI using the Builder Pattern
+        self.ui = AdminLayoutBuilder.build(self)
+        self.setCentralWidget(self.ui.central_widget)
+        
+        # 4. Apply the Global CSS Theme
+        try:
+            styler_engine = NexusStyler()
+            self.setStyleSheet(styler_engine.get_stylesheet())
+            flight_recorder.write_to_file("NexusStyler Theme applied successfully.", "INFO")
+        except Exception as theme_error:
+            flight_recorder.write_to_file(f"Failed to apply NexusStyler: {str(theme_error)}", "ERROR")
+            
+        # 5. Initialize the 5 Intelligence Routers
+        self._initialize_routers()
+        
+        # 6. Final UI Setup
+        self._connect_global_signals()
+        self.log_event("SYSTEM", "Phase 24 Refactor Active. Flight Recorder Engaged.")
 
-    def log_system_event(self, message):
+    def _initialize_routers(self):
         """
-        Central logging hub. Routers call this to log to the UI console.
-        """
-        logging.info(message)
-        # Pass to Dashboard Router if it exists
-        if hasattr(self, 'dashboard_router') and self.dashboard_router:
-            self.dashboard_router.append_log(message)
-        else:
-            print(f"[BOOT] {message}")
-    # endregion
-
-    # region [ROUTER_INJECTION]
-    def _init_routers(self):
-        """
-        Instantiate all Logic Controllers.
+        Instantiates the logic controllers and binds them to the UI components.
         """
         try:
-            # A. Dashboard (Server Control & Logs)
             self.dashboard_router = DashboardRouter(self)
+            flight_recorder.write_to_file("DashboardRouter initialized.", "INFO")
             
-            # B. Configuration (Identity & Provisioning)
-            self.config_router = ConfigRouter(self)
+            self.config_router = ConfigRouter(self, self.ui)
+            flight_recorder.write_to_file("ConfigRouter initialized.", "INFO")
             
-            # C. Forge (Mod Management)
-            self.forge_router = ForgeRouter(self)
+            self.forge_router = ForgeRouter(self.ui)
+            flight_recorder.write_to_file("ForgeRouter initialized.", "INFO")
             
-            # D. Economy (Ledger & Currency)
-            self.economy_router = EconomyRouter(self)
+            self.economy_router = EconomyRouter(self.ui)
+            flight_recorder.write_to_file("EconomyRouter initialized.", "INFO")
             
-            # E. Automation (Backups & Watchdog)
-            self.automation_router = AutomationRouter(self)
+            self.automation_router = AutomationRouter(self.ui)
+            flight_recorder.write_to_file("AutomationRouter initialized.", "INFO")
             
-        except Exception as e:
-            logging.critical(f"ROUTER INIT FAILED: {e}")
-            print(f"CRITICAL ERROR: {e}")
-            import traceback
-            traceback.print_exc()
-    # endregion
+            # Wire cross-router communication
+            self.dashboard_router.server_status_changed.connect(self.automation_router.handle_server_status_change)
+            
+        except Exception as router_error:
+            flight_recorder.write_to_file(f"Critical error during router initialization: {str(router_error)}", "CRITICAL")
+            QMessageBox.critical(self, "Boot Failure", f"A router failed to initialize.\n\n{str(router_error)}")
 
-    # region [WATCHDOG_LOGIC]
-    def _wire_watchdog_system(self):
+    def _connect_global_signals(self):
         """
-        Connects the Dashboard (Server Process) to the Automation Router.
+        Wires top-level window controls and global state changes.
         """
-        if self.dashboard_router and self.dashboard_router.server_process:
-            # Listen for when the server stops/crashes
-            self.dashboard_router.server_process.finished.connect(self.on_server_process_finished)
-
-    def on_server_process_finished(self, exit_code, exit_status):
-        """
-        Triggered whenever the dedicated server closes.
-        Decides if we should Auto-Restart (Watchdog).
-        """
-        self.log_system_event(f"WATCHDOG: Process ended (Code {exit_code}). Analyzing...")
-
-        # 1. Check if Watchdog is Enabled in Automation Tab
-        # We access the checkbox directly via the UI namespace
-        chk_watchdog = getattr(self.ui, 'chk_enable_watchdog', None)
+        # Global Header Buttons
+        if hasattr(self.ui, 'btn_global_start'):
+            self.ui.btn_global_start.clicked.connect(self.dashboard_router.start_server_sequence)
         
-        if chk_watchdog and chk_watchdog.isChecked():
-            # 2. Check if it was a manual stop (Optional: logic to distinguish stop vs crash)
-            # For now, if "Keep Alive" is checked, we ALWAYS restart unless we explicitly implement a "Maintenance Mode".
+        if hasattr(self.ui, 'btn_global_stop'):
+            self.ui.btn_global_stop.clicked.connect(self.dashboard_router.initiate_kill_sequence)
+
+    def log_event(self, category_string, message_text):
+        """
+        The Master Logging Function. 
+        It writes to the physical log file AND updates the visual Dashboard UI.
+        """
+        if not message_text:
+            return
             
-            self.log_system_event("WATCHDOG: Auto-Restart Sequence Initiated (T-Minus 5s)")
+        # 1. Write to the physical Black Box
+        flight_recorder.write_to_file(message_text, category_string.upper())
+        
+        # 2. Write to the Left Window (System Log) in the UI
+        timestamp_string = datetime.datetime.now().strftime("[%H:%M:%S]")
+        formatted_ui_string = f"[{category_string}] {timestamp_string}: {message_text}"
+        
+        if hasattr(self, 'dashboard_router'):
+            self.dashboard_router.append_system_log(formatted_ui_string)
+
+    def closeEvent(self, event_object):
+        """
+        Intercepts the application 'X' button to ensure safe shutdowns.
+        """
+        if hasattr(self, 'dashboard_router') and getattr(self.dashboard_router, 'is_running', False):
+            warning_dialog = QMessageBox.question(
+                self, 
+                "Active Server Detected", 
+                "The 7D2D Server is still running.\nClosing the manager will forcefully terminate the server without saving.\n\nAre you sure you want to exit?",
+                QMessageBox.Yes | QMessageBox.No
+            )
             
-            # 3. Schedule Restart
-            QTimer.singleShot(5000, self.execute_auto_restart)
-        else:
-            self.log_system_event("WATCHDOG: Auto-Restart Disabled. Standing by.")
-
-    def execute_auto_restart(self):
-        """
-        Callback to restart the server.
-        """
-        self.log_system_event("WATCHDOG: REBOOTING SERVER...")
-        if self.dashboard_router:
-            self.dashboard_router.start_server_sequence()
-    # endregion
-
-    # region [NAVIGATION_LOGIC]
-    def _setup_navigation(self):
-        """
-        Wires the Top-Nav buttons to the StackedWidget pages.
-        """
-        nav_map = {
-            "btn_nav_dashboard": 0,
-            "btn_nav_config": 1,
-            "btn_nav_forge": 2,
-            "btn_nav_economy": 3,
-            "btn_nav_automation": 4,
-            "btn_nav_faq": 5
-        }
-
-        for btn_name, page_index in nav_map.items():
-            # Check if button exists in the layout class
-            if hasattr(self.ui, btn_name):
-                btn = getattr(self.ui, btn_name)
-                if btn:
-                    btn.clicked.connect(lambda checked=False, idx=page_index: self.switch_page(idx))
+            if warning_dialog == QMessageBox.No:
+                event_object.ignore()
+                return
             else:
-                print(f"WARNING: Nav Button '{btn_name}' not found in Layout.")
+                flight_recorder.write_to_file("User forced application close while server was running. Killing process.", "WARNING")
+                self.dashboard_router.initiate_kill_sequence()
+                
+        flight_recorder.write_to_file("========================================", "SHUTDOWN")
+        flight_recorder.write_to_file("ZERO HOUR MANAGER TERMINATED NORMALLY", "SHUTDOWN")
+        flight_recorder.write_to_file("========================================", "SHUTDOWN")
+        event_object.accept()
 
-    def switch_page(self, index):
-        """
-        Changes the central stacked widget view.
-        """
-        if hasattr(self.ui, 'content_stack'):
-            self.ui.content_stack.setCurrentIndex(index)
-    # endregion
-
-    # region [UI_UTILITIES]
-    def set_button_busy(self, button, temp_text):
-        """
-        Helper for routers to disable a button temporarily.
-        """
-        if button:
-            button.setEnabled(False)
-            button.setText(temp_text)
-    # endregion
-
-# region [ENTRY_POINT]
+# region[APPLICATION_ENTRY]
 def main():
     """
-    Application Launch Sequence.
+    The main execution block for the compiled .exe.
     """
-    app = QApplication(sys.argv)
+    application_instance = QApplication(sys.argv)
     
-    # Optional: Load external stylesheet if exists
-    # if os.path.exists("assets/style.qss"):
-    #     with open("assets/style.qss", "r") as f:
-    #         app.setStyleSheet(f.read())
-        
-    window = ZeroHourManager()
-    window.show()
+    if platform.system() == "Windows":
+        import ctypes
+        application_id = "paradoxal.zerohour.manager.v24"
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(application_id)
+        except Exception:
+            pass 
+
+    main_window_instance = ZeroHourManager()
+    main_window_instance.show()
     
-    sys.exit(app.exec())
+    sys.exit(application_instance.exec())
 
 if __name__ == "__main__":
     main()

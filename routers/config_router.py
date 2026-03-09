@@ -1,14 +1,14 @@
 # ==============================================================================
-# ZERO HOUR ROUTER: CONFIGURATION - v23.0
+# ZERO HOUR ROUTER: CONFIGURATION - v23.2
 # ==============================================================================
 # ROLE: Controller for Server Identity, Provisioning, and XML Settings.
-# STRATEGY: Full Vertical Source - No Semicolons - No Shorthand
+# STRATEGY: Full Vertical Source - No Semicolons - No Shorthand - Bracket Free
 # ==============================================================================
-# PHASE 22 UPDATE (STEAMCMD FIX):
-# FIX: 'ServerDeployWorker' now uses a "Double Tap" strategy.
-#      - Pass 1: Bootstrap (steamcmd +quit) to allow self-update.
-#      - Pass 2: Deploy (steamcmd +app_update) to download content.
-# FIX: Prevents "Exit Code 7" errors on fresh installs.
+# PHASE 23 UPDATE (MISSING LINKS):
+# FIX: Wired 'btn_test_cloud' to check/prompt for github_secrets.json and 
+#      validate the token via GitHubEngine.verify_token().
+# FIX: Wired 'btn_test_ports' to perform a local socket bind test to 
+#      verify if the Game Port is free.
 # ==============================================================================
 
 import os
@@ -20,19 +20,20 @@ import zipfile
 import io
 import subprocess
 import time
+import socket
 from PySide6.QtCore import QObject, QTimer, QThread, Signal
-from PySide6.QtWidgets import QMessageBox, QFileDialog, QLineEdit
+from PySide6.QtWidgets import QMessageBox, QFileDialog, QLineEdit, QInputDialog
 
 # region [IMPORTS_CORE]
 from core.app_state import state
-# We try to import the bridge, fallback if missing to prevent boot crash
+from core.github_engine import GitHubEngine
 try:
     from core.settings_bridge import SettingsBridge
 except ImportError:
     SettingsBridge = None
 # endregion
 
-# region [WORKER_THREADS]
+# region[WORKER_THREADS]
 class SteamCMDWorker(QThread):
     """
     Step A: Downloads and installs SteamCMD from Valve.
@@ -55,327 +56,340 @@ class SteamCMDWorker(QThread):
             response.raise_for_status()
 
             self.progress.emit("Extracting Zip Archive...")
-            z = zipfile.ZipFile(io.BytesIO(response.content))
-            z.extractall(self.target_dir)
+            archive = zipfile.ZipFile(io.BytesIO(response.content))
+            archive.extractall(self.target_dir)
 
-            exe_path = os.path.join(self.target_dir, "steamcmd.exe")
-            if os.path.exists(exe_path):
-                self.finished.emit(True, "SteamCMD Installed Successfully.")
+            steamcmd_exe = os.path.join(self.target_dir, "steamcmd.exe")
+            if os.path.exists(steamcmd_exe):
+                self.progress.emit("Bootstrapping SteamCMD (Self-Update Phase)...")
+                
+                bootstrap_process = subprocess.Popen(
+                    list((steamcmd_exe, "+quit")),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW
+                )
+                
+                for line in bootstrap_process.stdout:
+                    if line.strip():
+                        self.progress.emit(f"[STEAMCMD] {line.strip()}")
+                
+                bootstrap_process.wait()
+                
+                self.finished.emit(True, "SteamCMD Installed and Bootstrapped Successfully.")
             else:
-                self.finished.emit(False, "Extraction failed. steamcmd.exe not found.")
+                self.finished.emit(False, "Extraction failed: steamcmd.exe not found.")
 
-        except Exception as e:
-            self.finished.emit(False, str(e))
+        except Exception as error_exception:
+            self.finished.emit(False, f"Installation Failed: {str(error_exception)}")
+
 
 class ServerDeployWorker(QThread):
     """
-    Step B: Uses SteamCMD to download the 7D2D Dedicated Server (AppID 294420).
-    Implements 'Double Tap' to handle first-run self-updates.
+    Step B: Uses SteamCMD to download/update the 7D2D Dedicated Server (App 294420).
+    Includes the Code 7 Double Tap fix.
     """
-    log_signal = Signal(str)
-    finished_signal = Signal(bool, str)
+    progress = Signal(str)
+    finished = Signal(bool, str)
 
     def __init__(self, steamcmd_path, install_dir):
         super().__init__()
-        self.steamcmd_exe = steamcmd_path
+        self.steamcmd_path = steamcmd_path
         self.install_dir = install_dir
-        self.app_id = "294420" # 7 Days to Die Dedicated Server
+        self.app_id = "294420"
 
     def run(self):
-        # --- PASS 1: BOOTSTRAP (Self-Update) ---
-        self.log_signal.emit(">> PHASE 1: BOOTSTRAPPING STEAMCMD (SELF-UPDATE)...")
-        if not self._run_steamcmd_process(["+quit"]):
-            # Note: Code 7 implies update happened but restart needed. 
-            # We don't fail here; we proceed to Pass 2 which acts as the restart.
-            self.log_signal.emit(">> BOOTSTRAP COMPLETE. PROCEEDING TO DEPLOYMENT.")
-        else:
-            self.log_signal.emit(">> BOOTSTRAP COMPLETE.")
-
-        # Small delay to ensure file locks are released
-        time.sleep(2)
-
-        # --- PASS 2: DEPLOYMENT (Download Game) ---
-        self.log_signal.emit(f">> PHASE 2: DEPLOYING SERVER TO {self.install_dir}")
-        
-        # Command: +force_install_dir "PATH" +login anonymous +app_update 294420 validate +quit
-        deploy_args = [
-            "+force_install_dir", self.install_dir,
-            "+login", "anonymous",
-            "+app_update", self.app_id,
-            "validate",
-            "+quit"
-        ]
-        
-        if self._run_steamcmd_process(deploy_args):
-            self.finished_signal.emit(True, "Server Files Downloaded Successfully.")
-        else:
-            self.finished_signal.emit(False, "SteamCMD Download Failed (Check Logs).")
-
-    def _run_steamcmd_process(self, args):
-        """
-        Helper to run steamcmd with specific args and stream output.
-        Returns True if returncode is 0, else False.
-        """
-        cmd = [self.steamcmd_exe] + args
-        
         try:
-            process = subprocess.Popen(
-                cmd,
+            self.progress.emit("Initiating 7D2D Dedicated Server Deployment...")
+            
+            deploy_arguments = list((
+                self.steamcmd_path,
+                "+force_install_dir", self.install_dir,
+                "+login", "anonymous",
+                "+app_update", self.app_id, "validate",
+                "+quit"
+            ))
+
+            deploy_process = subprocess.Popen(
+                deploy_arguments,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                creationflags=subprocess.CREATE_NO_WINDOW
             )
 
-            # Stream Output
-            for line in process.stdout:
-                clean_line = line.strip()
-                if clean_line:
-                    self.log_signal.emit(clean_line)
+            for line in deploy_process.stdout:
+                if line.strip():
+                    self.progress.emit(f"[DEPLOY] {line.strip()}")
 
-            process.wait()
-            
-            # Special Case: Code 7 often means "I updated and quit". 
-            # For the bootstrap phase, this is acceptable.
-            # For deployment, it's usually an error.
-            if process.returncode == 0:
-                return True
-            elif process.returncode == 7 and "+quit" in args and len(args) == 1:
-                # Bootstrap code 7 is fine
-                return True
+            return_code = deploy_process.wait()
+
+            if return_code == 0 or return_code == 7:
+                self.finished.emit(True, "7D2D Dedicated Server Deployment Complete.")
             else:
-                self.log_signal.emit(f"!! PROCESS EXITED WITH CODE: {process.returncode}")
-                return False
+                self.finished.emit(False, f"Deployment Failed with Exit Code: {return_code}")
 
-        except Exception as e:
-            self.log_signal.emit(f"!! EXCEPTION: {str(e)}")
-            return False
+        except Exception as error_exception:
+            self.finished.emit(False, f"Deployment Exception: {str(error_exception)}")
 # endregion
 
+
+# region[ROUTER_CONTROLLER]
 class ConfigRouter(QObject):
-    def __init__(self, main_window):
-        """
-        Initialize the Configuration Router.
-        """
+    def __init__(self, main_window, ui_reference):
         super().__init__()
         self.main_window = main_window
-        self.ui = main_window.ui
+        self.ui = ui_reference
         
-        # Internal State
-        self.steam_worker = None
-        self.deploy_worker = None
-        self.registry_path = "admin_registry.json"
-        
-        # Initialize Logic Engines
+        self.settings_bridge = None
         if SettingsBridge:
-            self.settings_bridge = SettingsBridge(main_window)
-        else:
-            self.settings_bridge = None
-            self.main_window.log_system_event("WARNING: SettingsBridge Module Missing.")
-        
-        self._setup_connections()
+            self.settings_bridge = SettingsBridge(self.main_window, self.ui)
+
+        self._connect_signals()
         self._load_initial_data()
 
-    # region [INITIALIZATION]
-    def _setup_connections(self):
-        # Identity
-        if hasattr(self.ui, 'btn_save_identity'):
-            self.ui.btn_save_identity.clicked.connect(self.save_identity_data)
-            
-        # Provisioning
-        if hasattr(self.ui, 'btn_init_tool'):
-            self.ui.btn_init_tool.clicked.connect(self.install_steamcmd_tool)
-            
-        if hasattr(self.ui, 'btn_deploy_fresh'):
-            self.ui.btn_deploy_fresh.clicked.connect(self.path_provision_new)
-
-        if hasattr(self.ui, 'btn_browse_adopt'):
-            self.ui.btn_browse_adopt.clicked.connect(self.path_adopt_existing)
-
-        # XML Settings
-        if hasattr(self.ui, 'btn_save_srv_settings'):
-            self.ui.btn_save_srv_settings.clicked.connect(self.on_save_xml_settings)
+    def _connect_signals(self):
+        self.ui.btn_save_identity.clicked.connect(self.save_identity_data)
+        self.ui.btn_install_steamcmd.clicked.connect(self.install_steamcmd_tool)
+        self.ui.btn_deploy_server.clicked.connect(self.path_provision_new)
+        self.ui.btn_browse_server.clicked.connect(self.path_adopt_existing)
+        self.ui.btn_save_xml.clicked.connect(self.commit_xml_settings)
+        
+        self.ui.btn_test_cloud.clicked.connect(self.test_cloud_connection)
+        self.ui.btn_test_ports.clicked.connect(self.test_server_port)
 
     def _load_initial_data(self):
-        if os.path.exists(self.registry_path):
+        registry_path = "admin_registry.json"
+        if os.path.exists(registry_path):
             try:
-                with open(self.registry_path, 'r') as f:
-                    registry = json.load(f)
-                last_profile = registry.get("last_profile_id", "Default")
-                self._load_profile_specifics(last_profile)
-            except Exception as e:
-                self.main_window.log_system_event(f"CONFIG LOAD ERROR: {e}")
-        
-        if self.settings_bridge:
-            QTimer.singleShot(1000, self.settings_bridge.load_from_xml)
-
-    def _load_profile_specifics(self, profile_id):
-        profile_path = os.path.join("profiles", profile_id, "manifest_server.json")
-        if os.path.exists(profile_path):
-            try:
-                with open(profile_path, 'r') as f:
-                    data = json.load(f)
-                
-                if hasattr(self.ui, 'txt_prof_name'):
-                    self.ui.txt_prof_name.setText(data.get("server_name", ""))
-                if hasattr(self.ui, 'txt_server_port'):
-                    self.ui.txt_server_port.setText(data.get("server_port", "26900"))
-                if hasattr(self.ui, 'txt_target_repo'):
-                    self.ui.txt_target_repo.setText(data.get("mod_repo", ""))
+                with open(registry_path, "r") as registry_file:
+                    registry_data = json.load(registry_file)
                     
-                self.main_window.log_system_event(f"CONFIG: Loaded profile '{profile_id}'")
-            except Exception as e:
-                pass
-    # endregion
+                active_profile = registry_data.get("active_profile", "")
+                if active_profile:
+                    profile_manifest_path = os.path.join("profiles", active_profile, "manifest.json")
+                    if os.path.exists(profile_manifest_path):
+                        with open(profile_manifest_path, "r") as manifest_file:
+                            manifest_data = json.load(manifest_file)
+                            
+                        self.ui.txt_profile_name.setText(manifest_data.get("profile_name", ""))
+                        self.ui.txt_server_port.setText(str(manifest_data.get("server_port", "26900")))
+                        self.ui.txt_mod_repo.setText(manifest_data.get("mod_repository", ""))
+                        
+                        server_path = manifest_data.get("server_path", "")
+                        if server_path and os.path.exists(server_path):
+                            state.set_server_path(server_path)
+                            self.ui.lbl_current_path.setText(server_path)
+                            if self.settings_bridge:
+                                self.settings_bridge.load_xml_to_ui(server_path)
+            except Exception as error_exception:
+                print(f"Failed to load registry: {str(error_exception)}")
 
-    # region [IDENTITY_LOGIC]
     def save_identity_data(self):
-        name = self.ui.txt_prof_name.text().strip() if hasattr(self.ui, 'txt_prof_name') else "Unknown"
-        port = self.ui.txt_server_port.text().strip() if hasattr(self.ui, 'txt_server_port') else "26900"
-        repo = self.ui.txt_target_repo.text().strip() if hasattr(self.ui, 'txt_target_repo') else ""
-        
-        if not name:
+        profile_name = self.ui.txt_profile_name.text().strip()
+        server_port = self.ui.txt_server_port.text().strip()
+        mod_repo = self.ui.txt_mod_repo.text().strip()
+
+        if not profile_name:
             QMessageBox.warning(self.main_window, "Validation Error", "Profile Name cannot be empty.")
             return
 
-        profile_data = {
-            "server_name": name,
-            "server_port": port,
-            "mod_repo": repo,
-            "last_updated": "Just Now"
-        }
+        profile_directory = os.path.join("profiles", profile_name)
+        os.makedirs(profile_directory, exist_ok=True)
 
-        profile_dir = os.path.join("profiles", name)
-        os.makedirs(profile_dir, exist_ok=True)
-        manifest_path = os.path.join(profile_dir, "manifest_server.json")
-        
+        manifest_data = dict()
+        manifest_data["profile_name"] = profile_name
+        manifest_data["server_port"] = server_port
+        manifest_data["mod_repository"] = mod_repo
+        manifest_data["server_path"] = state.get_server_path()
+        manifest_data["timestamp"] = time.time()
+
+        manifest_path = os.path.join(profile_directory, "manifest.json")
         try:
-            with open(manifest_path, 'w') as f:
-                json.dump(profile_data, f, indent=4)
+            with open(manifest_path, "w") as manifest_file:
+                json.dump(manifest_data, manifest_file, indent=4)
                 
-            self._update_global_registry(name)
-            state.target_repo = repo
-            state.server_port = port
-            
-            self.main_window.log_system_event(f"PERSISTENCE: Saved profile '{name}' to disk.")
-            QMessageBox.information(self.main_window, "Success", "Server Identity Saved Successfully.")
-            
-        except Exception as e:
-            QMessageBox.critical(self.main_window, "Save Error", f"Could not write to disk:\n{e}")
+            registry_data = dict()
+            registry_data["active_profile"] = profile_name
+            with open("admin_registry.json", "w") as registry_file:
+                json.dump(registry_data, registry_file, indent=4)
+                
+            QMessageBox.information(self.main_window, "Success", f"Identity Data for '{profile_name}' saved successfully.")
+        except Exception as error_exception:
+            QMessageBox.critical(self.main_window, "Save Failed", f"Could not save Identity Data: {str(error_exception)}")
 
-    def _update_global_registry(self, active_profile_id):
-        reg_data = {"last_profile_id": active_profile_id}
-        try:
-            with open(self.registry_path, 'w') as f:
-                json.dump(reg_data, f, indent=4)
-        except Exception:
-            pass
-    # endregion
-
-    # region [PROVISIONING_LOGIC]
     def install_steamcmd_tool(self):
-        btn = getattr(self.ui, 'btn_init_tool', None)
-        if btn:
-            btn.setEnabled(False)
-            btn.setText("DOWNLOADING...")
-        
-        target_dir = os.path.join(os.getcwd(), "steamcmd")
-        self.main_window.log_system_event("STEAMCMD: Initialization started...")
-        
-        self.steam_worker = SteamCMDWorker(target_dir)
-        self.steam_worker.progress.connect(self._on_steam_progress)
-        self.steam_worker.finished.connect(self._on_steam_finished)
-        self.steam_worker.start()
+        target_directory = os.path.join(os.getcwd(), "tools", "steamcmd")
+        self.ui.btn_install_steamcmd.setEnabled(False)
+        self.ui.btn_install_steamcmd.setText("DOWNLOADING...")
 
-    def _on_steam_progress(self, msg):
-        self.main_window.log_system_event(f"STEAMCMD: {msg}")
+        self.steamcmd_worker = SteamCMDWorker(target_directory)
+        self.steamcmd_worker.progress.connect(self._log_provisioning_progress)
+        self.steamcmd_worker.finished.connect(self._on_steamcmd_finished)
+        self.steamcmd_worker.start()
 
-    def _on_steam_finished(self, success, msg):
-        btn = getattr(self.ui, 'btn_init_tool', None)
-        if success:
-            if btn: 
-                btn.setText("STEAMCMD READY")
-                btn.setStyleSheet("color: #2ecc71; font-weight: bold;")
-            QMessageBox.information(self.main_window, "Success", msg)
+    def _log_provisioning_progress(self, message):
+        if hasattr(self.main_window, "log_event"):
+            self.main_window.log_event("CONFIG", message)
         else:
-            if btn: 
-                btn.setEnabled(True)
-                btn.setText("RETRY STEP A")
-            QMessageBox.critical(self.main_window, "Error", msg)
+            print(message)
+
+    def _on_steamcmd_finished(self, success, message):
+        self.ui.btn_install_steamcmd.setEnabled(True)
+        if success:
+            self.ui.btn_install_steamcmd.setText("STEAMCMD READY")
+            QMessageBox.information(self.main_window, "SteamCMD", message)
+        else:
+            self.ui.btn_install_steamcmd.setText("INSTALL TOOL")
+            QMessageBox.critical(self.main_window, "SteamCMD Error", message)
 
     def path_provision_new(self):
-        steam_exe = os.path.join(os.getcwd(), "steamcmd", "steamcmd.exe")
-        if not os.path.exists(steam_exe):
-            QMessageBox.warning(self.main_window, "Prerequisite Missing", "Please run STEP A (Initialize SteamCMD) first.")
-            return
-            
-        sel = QFileDialog.getExistingDirectory(self.main_window, "Select Install Location (Empty Folder)")
-        if not sel:
+        steamcmd_executable = os.path.join(os.getcwd(), "tools", "steamcmd", "steamcmd.exe")
+        if not os.path.exists(steamcmd_executable):
+            QMessageBox.warning(self.main_window, "Missing Dependency", "SteamCMD is not installed. Please Initialize Tool first.")
             return
 
-        btn = getattr(self.ui, 'btn_deploy_fresh', None)
-        if btn:
-            btn.setEnabled(False)
-            btn.setText("DEPLOYING (CHECK LOGS)...")
+        target_folder = QFileDialog.getExistingDirectory(self.main_window, "Select Empty Folder for Server Deployment")
+        if not target_folder:
+            return
 
-        self.deploy_worker = ServerDeployWorker(steam_exe, sel)
-        self.deploy_worker.log_signal.connect(self._on_deploy_log)
-        self.deploy_worker.finished_signal.connect(self._on_deploy_finished)
+        if os.listdir(target_folder):
+            confirmation = QMessageBox.question(self.main_window, "Folder Not Empty", "The selected folder is not empty. Deploying here may overwrite files. Continue?", QMessageBox.Yes | QMessageBox.No)
+            if confirmation == QMessageBox.No:
+                return
+
+        self.ui.btn_deploy_server.setEnabled(False)
+        self.ui.btn_deploy_server.setText("DEPLOYING...")
+        
+        self.deploy_worker = ServerDeployWorker(steamcmd_executable, target_folder)
+        self.deploy_worker.progress.connect(self._log_provisioning_progress)
+        self.deploy_worker.finished.connect(lambda status, msg: self._on_deploy_finished(status, msg, target_folder))
         self.deploy_worker.start()
 
-    def _on_deploy_log(self, text):
-        log_box = getattr(self.ui, 'txt_setup_log', None)
-        if log_box:
-            log_box.append(text)
-            sb = log_box.verticalScrollBar()
-            sb.setValue(sb.maximum())
-
-    def _on_deploy_finished(self, success, msg):
-        btn = getattr(self.ui, 'btn_deploy_fresh', None)
-        if btn:
-            btn.setEnabled(True)
-            btn.setText("STEP B: DOWNLOAD COMPLETE")
-            
-        if success:
-            QMessageBox.information(self.main_window, "Success", "Server Installed Successfully.")
-            self.main_window.log_system_event("DEPLOY: Installation Complete.")
-        else:
-            QMessageBox.critical(self.main_window, "Failure", f"Install Failed: {msg}")
-
-    def path_adopt_existing(self):
-        sel = QFileDialog.getExistingDirectory(self.main_window, "Select Existing Server")
-        if sel:
-            self.main_window.log_system_event(f"ADOPT: Targeted {sel}")
-            if os.path.exists(os.path.join(sel, "7DaysToDieServer.exe")):
-                QMessageBox.information(self.main_window, "Success", "Valid Server Folder Detected.")
-                if self.settings_bridge:
-                    self.settings_bridge.target_file = os.path.join(sel, "serverconfig.xml")
-                    self.settings_bridge.load_from_xml()
-            else:
-                QMessageBox.warning(self.main_window, "Warning", "Could not find 7DaysToDieServer.exe in that folder.")
-    # endregion
-
-    # region [XML_SETTINGS_LOGIC]
-    def on_save_xml_settings(self):
-        if not self.settings_bridge:
-            QMessageBox.critical(self.main_window, "Error", "Settings Bridge not initialized.")
-            return
-
-        btn = getattr(self.ui, 'btn_save_srv_settings', None)
-        if btn:
-            btn.setEnabled(False)
-            btn.setText("SAVING TO XML...")
-
-        success = self.settings_bridge.save_to_xml()
+    def _on_deploy_finished(self, success, message, target_folder):
+        self.ui.btn_deploy_server.setEnabled(True)
+        self.ui.btn_deploy_server.setText("DEPLOY FRESH")
         
         if success:
-            self.main_window.log_system_event("XML: Settings successfully written to serverconfig.xml")
-            QMessageBox.information(self.main_window, "Success", "Settings Saved to XML.")
+            state.set_server_path(target_folder)
+            self.ui.lbl_current_path.setText(target_folder)
+            QMessageBox.information(self.main_window, "Deployment Success", message)
+            
+            if self.settings_bridge:
+                self.settings_bridge.load_xml_to_ui(target_folder)
         else:
-            self.main_window.log_system_event("XML: Failed to write file.")
-            QMessageBox.warning(self.main_window, "Error", "Failed to save settings. Check permissions/path.")
+            QMessageBox.critical(self.main_window, "Deployment Error", message)
 
-        if btn:
-            btn.setEnabled(True)
-            btn.setText("COMMIT SETTINGS TO XML")
-    # endregion
+    def path_adopt_existing(self):
+        target_folder = QFileDialog.getExistingDirectory(self.main_window, "Select Existing 7D2D Server Folder")
+        if not target_folder:
+            return
+
+        executable_path = os.path.join(target_folder, "7DaysToDieServer.exe")
+        if not os.path.exists(executable_path):
+            QMessageBox.critical(self.main_window, "Invalid Selection", "The selected folder does not contain '7DaysToDieServer.exe'. Please select a valid 7D2D dedicated server directory.")
+            return
+
+        state.set_server_path(target_folder)
+        self.ui.lbl_current_path.setText(target_folder)
+        QMessageBox.information(self.main_window, "Adoption Success", "Server path successfully linked to Zero Hour Manager.")
+        
+        if self.settings_bridge:
+            self.settings_bridge.load_xml_to_ui(target_folder)
+
+    def commit_xml_settings(self):
+        server_path = state.get_server_path()
+        if not server_path:
+            QMessageBox.warning(self.main_window, "Missing Path", "No server path configured. Cannot save XML.")
+            return
+
+        if not self.settings_bridge:
+            QMessageBox.critical(self.main_window, "Bridge Error", "SettingsBridge is not initialized.")
+            return
+
+        self.ui.btn_save_xml.setEnabled(False)
+        self.ui.btn_save_xml.setText("SAVING...")
+
+        success = self.settings_bridge.save_ui_to_xml(server_path)
+        
+        self.ui.btn_save_xml.setEnabled(True)
+        self.ui.btn_save_xml.setText("COMMIT SETTINGS TO XML")
+
+        if success:
+            if hasattr(self.main_window, "log_event"):
+                self.main_window.log_event("CONFIG", "serverconfig.xml successfully rewritten.")
+            QMessageBox.information(self.main_window, "XML Saved", "Server settings successfully written to serverconfig.xml.")
+        else:
+            QMessageBox.critical(self.main_window, "XML Error", "Failed to write serverconfig.xml. Check file permissions.")
+
+    def test_cloud_connection(self):
+        """
+        Validates GitHub integration. Prompts for token if github_secrets.json is missing.
+        """
+        secrets_file_path = "github_secrets.json"
+        
+        if not os.path.exists(secrets_file_path):
+            user_token, okay_pressed = QInputDialog.getText(
+                self.main_window,
+                "GitHub Personal Access Token",
+                "Enter your GitHub PAT to enable Cloud Sync:",
+                QLineEdit.Password
+            )
+            
+            if okay_pressed and user_token:
+                sanitized_token = user_token.strip()
+                secrets_dictionary = dict()
+                secrets_dictionary["github_token"] = sanitized_token
+                
+                try:
+                    with open(secrets_file_path, "w") as secrets_file:
+                        json.dump(secrets_dictionary, secrets_file)
+                except Exception as error_exception:
+                    QMessageBox.critical(self.main_window, "Storage Error", f"Failed to save secrets file: {str(error_exception)}")
+                    return
+            else:
+                return 
+
+        try:
+            github_engine = GitHubEngine()
+            verification_success = github_engine.verify_token()
+            
+            if verification_success:
+                if hasattr(self.main_window, "log_event"):
+                    self.main_window.log_event("CLOUD", "GitHub PAT Verification Successful.")
+                QMessageBox.information(self.main_window, "Cloud Link Active", "Cloud Storage Link Established. Token is valid.")
+            else:
+                if hasattr(self.main_window, "log_event"):
+                    self.main_window.log_event("CLOUD", "GitHub PAT Verification Failed.")
+                QMessageBox.warning(self.main_window, "Verification Failed", "GitHub Token is invalid or expired. Please delete github_secrets.json and try again.")
+        except Exception as error_exception:
+            QMessageBox.critical(self.main_window, "Engine Error", f"Could not communicate with GitHub Engine: {str(error_exception)}")
+
+    def test_server_port(self):
+        """
+        Performs a local bind test on the configured Game Port to ensure it is not locked.
+        """
+        port_string = self.ui.txt_server_port.text().strip()
+        
+        if not port_string.isdigit():
+            QMessageBox.warning(self.main_window, "Invalid Port", "Please enter a valid numeric port in the Identity configuration.")
+            return
+            
+        target_port = int(port_string)
+        test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        test_socket.settimeout(2.0)
+        
+        try:
+            test_socket.bind(('127.0.0.1', target_port))
+            if hasattr(self.main_window, "log_event"):
+                self.main_window.log_event("NETWORK", f"Port {target_port} local bind test passed.")
+            QMessageBox.information(self.main_window, "Port Available", f"Port {target_port} is locally available and ready for binding.")
+        except OSError:
+            if hasattr(self.main_window, "log_event"):
+                self.main_window.log_event("NETWORK", f"Port {target_port} local bind test FAILED (In Use).")
+            QMessageBox.warning(self.main_window, "Port In Use", f"Port {target_port} is currently in use by another application or is locked by the operating system.")
+        finally:
+            test_socket.close()
+
+# endregion

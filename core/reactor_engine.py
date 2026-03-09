@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: REACTOR ENGINE - v23.0
+# ZERO HOUR CORE: REACTOR ENGINE - v23.2
 # =========================================================
 # ROLE: Server Watchdog & Sovereign Log Parser
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand

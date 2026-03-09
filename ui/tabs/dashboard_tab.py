@@ -1,5 +1,5 @@
 # ==============================================================================
-# ZERO HOUR UI: DASHBOARD TAB - v23.0
+# ZERO HOUR UI: DASHBOARD TAB - v23.2
 # ==============================================================================
 # ROLE: Combines System Info and Live Reactor Logs into a
 #       single, unified Command Center view.

@@ -1,107 +1,89 @@
-# =========================================================
-# ZERO HOUR CORE: TELEMETRY ENGINE - v23.0
-# =========================================================
-# ROLE: Dual-Stream Flight Recorder (Disk + UI Bridge)
-# STRATEGY: Full Vertical Source - No Semicolons - No Shorthand
-# =========================================================
-import logging
+# ==============================================================================
+# ZERO HOUR CORE: LOGGER - v24.0 (BLACK BOX FLIGHT RECORDER)
+# ==============================================================================
+# ROLE: Intercepts all stdout/stderr and UI logs, writing them to a physical file.
+# STRATEGY: Full Vertical Source - No Semicolons - No Shorthand - Bracket Free
+# ==============================================================================
+
 import os
+import sys
 import datetime
-from PySide6.QtCore import QObject, Signal
+import traceback
 
-class UIHandler(logging.Handler, QObject):
-    """ 
-    Custom Log Handler that bridges standard Python logging 
-    to the PySide6 UI thread via Signals.
+class BlackBoxLogger:
     """
-    log_signal = Signal(str)
-
+    A persistent file logger that acts as a Flight Recorder for the application.
+    It catches all print statements, system errors, and router log events.
+    """
     def __init__(self):
-        # Initialize both parents in a vertical, explicit manner
-        logging.Handler.__init__(self)
-        QObject.__init__(self)
+        self.log_directory = os.path.join(os.getcwd(), "logs")
+        if not os.path.exists(self.log_directory):
+            try:
+                os.makedirs(self.log_directory, exist_ok=True)
+            except Exception:
+                pass 
+                
+        timestamp_string = datetime.datetime.now().strftime("%Y-%m-%d")
+        self.log_file_path = os.path.join(self.log_directory, f"zerohour_sys_{timestamp_string}.log")
+        
+        self.original_stdout = sys.stdout
+        self.original_stderr = sys.stderr
 
-    def emit(self, record):
+    def write_to_file(self, message_text, level="INFO"):
         """
-        Triggered whenever a log event occurs.
-        Formats the message and emits the signal to the UI.
+        Appends a formatted string directly to the physical log file.
         """
+        if not message_text or message_text.isspace():
+            return
+            
+        timestamp = datetime.datetime.now().strftime("[%H:%M:%S]")
+        formatted_message = f"{timestamp} [{level}] {message_text.strip()}\n"
+        
         try:
-            # Format the log record into a readable string
-            message = self.format(record)
-            
-            # Emit the signal to be caught by the MainWindow console
-            self.log_signal.emit(message)
-            
+            with open(self.log_file_path, "a", encoding="utf-8") as log_file:
+                log_file.write(formatted_message)
         except Exception:
-            # Fallback to prevent the logger from crashing the application
-            self.handleError(record)
+            pass
 
-class ParadoxalLogger:
-    """
-    Orchestrates the global logging system for the Paradoxal Ecosystem.
-    Manages the physical log files on disk and the UI telemetry stream.
-    """
-    def __init__(self, log_dir):
-        # Ensure the target log directory exists
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
-            
-        # Initialize the 'Paradoxal' Master Logger
-        self.logger = logging.getLogger("Paradoxal")
-        
-        # Capture all levels of detail for the Flight Recorder (Disk)
-        self.logger.setLevel(logging.DEBUG)
-        
-        # Clear existing handlers to prevent duplicate entries on reload
-        if self.logger.hasHandlers():
-            self.logger.handlers.clear()
-        
-        # --- STREAM 1: THE FLIGHT RECORDER (DISK LOG) ---
-        # Generates a timestamped filename (e.g. zerohour_20240128_120000.log)
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        log_filename = f"zerohour_{timestamp}.log"
-        log_path = os.path.join(log_dir, log_filename)
-        
-        # Persistent File Handler
-        file_handler = logging.FileHandler(
-            log_path, 
-            encoding='utf-8'
-        )
-        
-        # Disk logs get full DEBUG detail for engineering review
-        file_handler.setLevel(logging.DEBUG)
-        
-        # Format: [Time.Milliseconds] [Level] Message
-        file_formatter = logging.Formatter(
-            '[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s', 
-            datefmt='%H:%M:%S'
-        )
-        
-        file_handler.setFormatter(file_formatter)
-        
-        # --- STREAM 2: THE UI BRIDGE (REAL-TIME TELEMETRY) ---
-        self.ui_handler = UIHandler()
-        
-        # UI console only shows INFO level and higher to keep it readable for the admin
-        self.ui_handler.setLevel(logging.INFO)
-        
-        # Simplified format for the UI console
-        ui_formatter = logging.Formatter(
-            '[%(asctime)s] [%(levelname)s] %(message)s', 
-            datefmt='%H:%M:%S'
-        )
-        
-        self.ui_handler.setFormatter(ui_formatter)
-        
-        # Attach both handlers to the Master Logger
-        self.logger.addHandler(file_handler)
-        self.logger.addHandler(self.ui_handler)
-        
-        self.logger.info(f"[TELEMETRY] Flight Recorder Initialized: {log_filename}")
+    def hook_system_streams(self):
+        """
+        Reroutes all standard print() and error outputs into the physical file.
+        """
+        sys.stdout = StreamInterceptor(self, "STDOUT", self.original_stdout)
+        sys.stderr = StreamInterceptor(self, "STDERR", self.original_stderr)
+        sys.excepthook = self.handle_uncaught_exception
 
-    def get_logger(self):
+    def handle_uncaught_exception(self, exception_type, exception_value, exception_traceback):
         """
-        Returns the configured logger instance for use across the application.
+        Catches fatal thread crashes before the application dies silently.
         """
-        return self.logger
+        traceback_details = "".join(traceback.format_exception(exception_type, exception_value, exception_traceback))
+        error_message = f"FATAL CRASH DETECTED:\n{traceback_details}"
+        self.write_to_file(error_message, "CRITICAL")
+        
+        if self.original_stderr:
+            self.original_stderr.write(error_message)
+
+
+class StreamInterceptor:
+    """
+    A helper class to intercept sys.stdout and sys.stderr.
+    It writes to the BlackBox file and then passes it along to the original console.
+    """
+    def __init__(self, logger_instance, stream_name, original_stream):
+        self.logger_instance = logger_instance
+        self.stream_name = stream_name
+        self.original_stream = original_stream
+
+    def write(self, message_data):
+        if message_data and not message_data.isspace():
+            self.logger_instance.write_to_file(message_data, self.stream_name)
+        if self.original_stream:
+            self.original_stream.write(message_data)
+
+    def flush(self):
+        if self.original_stream:
+            self.original_stream.flush()
+
+# Instantiate a global singleton instance
+flight_recorder = BlackBoxLogger()

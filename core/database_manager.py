@@ -1,5 +1,5 @@
 # =========================================================
-# ZERO HOUR CORE: DATABASE MANAGER - v23.0
+# ZERO HOUR CORE: DATABASE MANAGER - v23.2
 # =========================================================
 # ROLE: Global Persistent Memory (SQLite Engine)
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand
