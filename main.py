@@ -5,8 +5,8 @@
 # STRATEGY: Full Vertical Source - No Semicolons - No Shorthand - Bracket Free
 # ==============================================================================
 # PHASE 24 UPDATE:
-# FIX: Reverted UI initialization to correctly instantiate ZeroHourLayout and 
-#      call setup_ui() as dictated by ui/admin_layouts.py.
+# FIX: Added namespace diagnostic probes to _initialize_routers to verify
+#      the exact memory location of UI buttons before wiring ForgeRouter.
 # ==============================================================================
 
 import sys
@@ -46,7 +46,7 @@ class ZeroHourManager(QMainWindow):
         flight_recorder.write_to_file("========================================", "BOOT")
 
         # 2. Setup the Main Window properties
-        self.setWindowTitle("Zero Hour Ecosystem | Paradoxal Suite v24.3")
+        self.setWindowTitle("Zero Hour Ecosystem | Paradoxal Suite v24.4")
         self.setMinimumSize(1200, 800)
         
         # 3. Build the UI using the verified ZeroHourLayout class
@@ -86,7 +86,7 @@ class ZeroHourManager(QMainWindow):
             self.config_router = ConfigRouter(self, self.ui)
             flight_recorder.write_to_file("ConfigRouter initialized.", "INFO")
             
-            self.forge_router = ForgeRouter(self.ui)
+            self.forge_router = ForgeRouter(self)
             flight_recorder.write_to_file("ForgeRouter initialized.", "INFO")
             
             self.economy_router = EconomyRouter(self.ui)
@@ -95,9 +95,15 @@ class ZeroHourManager(QMainWindow):
             self.automation_router = AutomationRouter(self.ui)
             flight_recorder.write_to_file("AutomationRouter initialized.", "INFO")
             
-            # Wire cross-router communication
-            #Disabled for now
-            #self.dashboard_router.server_status_changed.connect(self.automation_router.handle_server_status_change)
+            # --- NAMESPACE DIAGNOSTIC PROBES ---
+            print("==================================================")
+            print("NAMESPACE DIAGNOSTIC:")
+            print("Looking for Sync Button on Main Window:", hasattr(self, 'btn_commit_deploy'))
+            print("Looking for Sync Button on UI Layout:", hasattr(self.ui, 'btn_commit_deploy'))
+            print("Looking for Sync Button on Layout's UI:", hasattr(self.ui.ui, 'btn_commit_deploy'))
+            print("==================================================")
+            
+            # self.dashboard_router.server_status_changed.connect(self.automation_router.handle_server_status_change)
             
         except Exception as router_error:
             flight_recorder.write_to_file(f"Critical error during router initialization: {str(router_error)}", "CRITICAL")
@@ -108,11 +114,11 @@ class ZeroHourManager(QMainWindow):
         Wires top-level window controls and global state changes.
         """
         # Global Header Buttons
-        if hasattr(self.ui, 'btn_global_start'):
-            self.ui.btn_global_start.clicked.connect(self.dashboard_router.start_server_sequence)
+        if hasattr(self.ui, 'btn_start_server'):
+            self.ui.btn_start_server.clicked.connect(self.dashboard_router.start_server_sequence)
         
-        if hasattr(self.ui, 'btn_global_stop'):
-            self.ui.btn_global_stop.clicked.connect(self.dashboard_router.initiate_kill_sequence)
+        if hasattr(self.ui, 'btn_stop_server'):
+            self.ui.btn_stop_server.clicked.connect(self.dashboard_router.initiate_kill_sequence)
 
     def log_event(self, category_string, message_text):
         """
